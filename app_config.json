@@ -1,0 +1,7 @@
+{ 
+  "AWS_REGION": "us-west-2",
+  "STARTUP_SIGNUP_TABLE": "my-startup-signup-table",
+  "CROSSCUT_SIMPLE_CELL_COUNTS": "crosscut-simple-cell-counts",
+  "STARTUP_MAP_TABLE": "my-startup-map-table",
+  "NEW_SIGNUP_TOPIC": "arn:aws:sns:us-west-2:244265663318:my-sns-topic"
+}

@@ -1,0 +1,24 @@
+.maptable {
+	border-width: 3;
+	border-color: #652712;
+}
+
+.mapbox {
+	height: 1cm;
+	width: 1cm;
+	background-color: #b0c4de;
+	line-height: 2em;
+	text-align: center;
+	vertical-align: middle;
+	float: left;
+	padding: 2px;
+	border-radius: 5px
+}
+
+.dashboard-box {
+	height: 4cm;
+	width: 10cm;
+	background-color: #40c4be;
+}
+
+.mapbox:hover{background-color: #984201;}
