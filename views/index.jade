@@ -7,27 +7,16 @@ var c3 = '#BB3355';
 block content
   div(class="container")
     div(class="header")
-      ul(class="nav nav-pills pull-right")
-        li(class="active")
-          a(href="#") No-op 1
-        li
-          a(href="#") No-op 2
-        li
-          a(href="#") No-op 3
-        li
-          a(href="#") No-Op 4
       h3(class="text-muted") Accretion Green
     div(id="signupSuccess", class="alert alert-success", style="display:none")
       p(id="signupSuccessText") Thanks for entering information! We might keep your information!!!.
-    div(id="inquirySuccess", class="alert alert-success", style="display:none")
-      p(id="inquirySuccessText") Thanks for inquiring! Your result is %RESULT%.
-    div(id="signupDuplicate", class="alert alert-success", style="display:none")
-      p(id="signupDuplicateText") Our website is broken.  You should see this message if you already signed up, but you'll never see it!  LOL!!!
+    div(id="statusMessage", class="alert alert-success", style="display:none")
+      p(id="statusMessageText") status
     div(id="signupError", class="alert alert-info", style="display:none")
       p(id="signupErrorText") This alert probably means you're viewing a static webpage, not a dynamic one.  Or maybe we had a server error.
 
     div(id="mapContainer", style="width:10.5cm; background-color: #9966CC;")
-      p(id="mapContainerText") bleeah!
+      p(id="mapContainerText") ...
       div(id="mapContainerAnchor")
 
     div(class="jumbotron")
@@ -39,11 +28,13 @@ block content
           button(id="color2" class="btn") M
           button(id="color3" class="btn") R
         a(class="btn btn-lg btn-success", data-toggle="modal", href="#signupModal") Register.
-        button(id="inquiry", type="button", class="btn btn-primary") Smaller, duller button!
-        button(id="getmap", type="button", class="btn btn-primary") Update Map
+        button(id="status", type="button", class="btn btn-primary") Update Status
+        button(id="getmaptile", type="button", class="btn btn-primary") Read Map Tile
     div(class="footer")
-      p &copy; From Amazon Node.js / AWS tutorial
-      
+      p
+        | Partially powered by SomaFM Groove Salad -- consider 
+        a(href="http://www.somafm.com/support/") donating to SomaFM
+        
     // Modal
     div(class="modal fade", id="signupModal", tabindex="-1", role="dialog", aria-labelledby="signupModal", aria-hidden="true")
       div(class="modal-dialog")
@@ -73,9 +64,10 @@ block content
   script(src="../static/jquery/jquery.js")
   script(src="../static/bootstrap/js/bootstrap.min.js")
 
+  // the following should agree with values in server.js
   script.
-    var numRows = 10;
-    var numCols = 10;
+    var tileWidth  = 10;
+    var tileHeight = 10;
     var userColor = '#555555';
     var userColorChoice = '#444477';
     var c1 = '#33BB55';
@@ -109,11 +101,11 @@ block content
 
   script.
     $(document).ready(function () {
-      for (var i = 1; i <= numRows; i++) {
-        for (var j = 1; j <= numCols; j++) {
+      for (var i = tileHeight-1; i >= 0; i--) {
+        for (var j = 0; j < tileWidth; j++) {
           var newDiv  = document.createElement('div');
-          $(newDiv).attr('id', 'mr' + i + "mc" + j);
-          $(newDiv).attr('class', 'mapbox');
+          $(newDiv).attr('id', 'mx' + j + "my" + i);
+          $(newDiv).attr('class', 'mapcell');
           $(newDiv).text('Z'+i+j);
           $('#mapContainer').append(newDiv);
         }
@@ -122,21 +114,8 @@ block content
 
 
   script.
-    $(document).ready(function () {
-        $('#OldMapTable').click(function(e) {
-            var offset = $(this).offset();
-            var pos1 = ((e.clientX - offset.left)/$(this).width() + ", " + (e.clientY - offset.top)/$(this).height());
-            $("#signupSuccess").html(pos1);
-            $("#signupSuccess").show();
-
-        });
-    });
-
-  script.
     $(document).ready(function() {
       $("#signup").click(function() {
-        var blech = $("#signupForm").serialize();
-        var blobject = $("#signupForm");
         $.post( "/signup", $("#signupForm").serialize(),
                 function(data) {
                   $("#signupSuccess").show();
@@ -159,13 +138,14 @@ block content
 
   script.
     $(document).ready(function() {
-      $(".mapbox").click(function() {
+      $(".mapcell").click(function() {
         var boxId = $(this).attr('id');
-        var rowPos = boxId.indexOf("mr");
-        var colPos = boxId.indexOf("mc");
-        var rowNum = boxId.substring(rowPos+2, colPos);
-        var colNum = boxId.substring(colPos+2);
-        $.post( "/clicker", {"row" : rowNum, "col" : colNum, "color" : userColorChoice},
+        var xPos = boxId.indexOf("mx");
+        var yPos = boxId.indexOf("my");
+        var cellX = boxId.substring(xPos+2, yPos);
+        var cellY = boxId.substring(yPos+2);
+        console.log('/clicker' + "cellX: " + cellX + ", cellY: " + cellY + ", color: " + userColorChoice);
+        $.post( "/clicker", {"cellX" : cellX, "cellY" : cellY, "color" : userColorChoice},
                 function(data) {
                 });
       })
@@ -177,16 +157,17 @@ block content
                 function(data) {
                   $.each(data.Items, function(index, value){
                     var cell = value.cellnum.N;
-                    var rowNum = 1 + Math.floor((cell-1)/numRows);
-                    var colNum = 1 + ((cell-1) % numRows);
+                    var cellX = (cell-1) % tileWidth;
+                    var cellY = Math.floor((cell-1)/tileHeight);
                     var count = value.ClickCount.N;
-                    var mapCellId = "#mr" + rowNum + "mc" + colNum;
+                    var mapCellId = "#mx" + cellX + "my" + cellY;
                     var color = value.Color.S;
                     $(mapCellId).html(count);
                     $(mapCellId).css({backgroundColor: color});
                   });
               });
       }
+
 
   script.  
     function doUpdaterPoll(){
@@ -195,26 +176,34 @@ block content
       setTimeout(doUpdaterPoll,3000);
     }
 
-  script.
-    $(document).ready(function() {
-      $("#inquiry").click(function() {
-        $.post( "/inquiry", 'Inquiry Text',
-                function(data) {
-                  $("#inquirySuccess").html(data);
-                  $("#inquirySuccess").show();
-                });
-      })
-    })
-
   // update map when document loads and anytime button is clicked
   // and set to poll every 3 seconds
   script.
     $(document).ready(updateMap())
   script.
+    $(document).ready(doUpdaterPoll())
+
+
+  // read map tile
+  script.
     $(document).ready(function() {
-      $("#getmap").click(function() {
-        updateMap();
+      $("#getmaptile").click(function() {
+        console.log('777777client calling getmaptile');
+        $.post("/getmaptile", 'Get Map Tile',
+              function(data) {
+              })
       })
     });
+
+
+  // retrieve status from server
   script.
-    $(document).ready(doUpdaterPoll())
+    $(document).ready(function() {
+      $("#status").click(function() {
+        $.post("/status", 'Status Request',
+              function(data) {
+                  $("#statusMessage").html(data);
+                  $("#statusMessage").show();
+              })
+      })
+    });

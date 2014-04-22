@@ -54,6 +54,8 @@ app.post('/signup', function(req, res) {
   signup(nameField, emailField, monkeyField, previewBool);
 });
 
+
+
 //Add signup form data to database.
 var signup = function (nameSubmitted, emailSubmitted, monkeySubmitted, previewPreference) {
   var formData = {
@@ -84,6 +86,47 @@ var signup = function (nameSubmitted, emailSubmitted, monkeySubmitted, previewPr
   });
 };
 
+
+// revised version of 'getmap', below
+// this one reads tile into 2D array
+app.post('/getmaptile', function(req, res) {
+  
+  serverStatus = 'getmaptile';
+  console.log('99999 reading tile data...');
+
+  var scanObject = {
+    TableName: config.CROSSCUT_SIMPLE_CELL_COUNTS,
+  }
+
+  db.scan(scanObject, function(err,data) {
+    if (err) {
+      console.log('Error getting new map data: ' + err);
+    } else {
+      console.log("55555 " + data.Count);  // 55555 delete
+      var mapTileCells = createArray(tileWidth, tileHeight);
+      data.Items.forEach(function(item) {
+        var cellNum = item.cellnum.N;
+        var cellColor = item.Color.S;
+        var cellX = (cellNum-1) % tileWidth;
+        var cellY = Math.floor((cellNum-1)/tileHeight);
+
+        mapTileCells[cellX][cellY] = {cellNum : cellNum, cellColor : cellColor};
+      })
+
+      for (var y=9; y>=0; y--) {
+        var rowColors = "";
+        for (var x=0; x<10; x++) {
+          rowColors += mapTileCells[x][y].cellColor + ", ";
+        }
+        console.log("y=" + y + ": " + rowColors);
+      }
+
+      // res.send(data);
+    }
+  });
+});
+
+
 app.post('/getmap', function(req, res) {
 
   var scanObject = {
@@ -97,15 +140,18 @@ app.post('/getmap', function(req, res) {
     } else {
       res.send(data);
     }
-  })
+  });
 });
 
-//=============
-//POST inquiry form.
+var serverStatus = 'Server Status';
+
+app.post('/status', function(req, res) {
+  res.send(serverStatus);
+})
+
 var postCount = 0;
 app.post('/inquiry', function(req, res) {
   postCount += 1;
-  //res.send("Double quote data we are returning");
   res.send('c' + postCount);
 });
 
@@ -125,42 +171,19 @@ function createArray(dimensions) {
 
 
 // these should agree with client & bot.js definitions, see .../index.jade
-var numRows = 10;
-var numCols = 10;
+var tileWidth = 10;  // x
+var tileHeight = 10; // y
 
-var clickCounts = createArray(10,10);
-
-
-// 55555 this should be obsolete-ifiable
-//tic-tack-toe clicker
 app.post('/clicker', function(req, res) {
-  var row   = parseInt(req.body.row),
-      col   = parseInt(req.body.col);
+  var cellX  = parseInt(req.body.cellX),
+      cellY  = parseInt(req.body.cellY);
       color = req.body.color;
 
-  clickCounts[row-1][col-1] += 1;
+  serverStatus = 'cell x, y = ' + cellX + ', ' + cellY + ' clicked';
 
-  var cellNum = numCols*(row-1) + col;  // should be 1-9 if all numerical
+  var cellNum = tileWidth*(cellY) + cellX + 1;  // should be 1-100
   var cellString = 'cell'+cellNum;
 
-  var formData = {
-    TableName: config.STARTUP_MAP_TABLE,
-    Key: {
-      'Customer ID': {'S': '0'}
-    },
-    AttributeUpdates: {},
-    ReturnValues: "ALL_NEW"
-  }
-  
-  // here's the kludge: create value for AttributeUpdates that includes cellString
-  formData.AttributeUpdates[cellString] = {'Value': {'N': '1'},'Action':'ADD'};
-
-  db.updateItem(formData, function(err, data) {
-    if (err) {
-      console.log('Error adding cell1 to database: ', err);
-    } else {
-    }
-  });
 
   // update in CSCC table
   var countData = {
@@ -181,10 +204,9 @@ app.post('/clicker', function(req, res) {
     }
   });
 
-  // above, we're updating cumulative clicks in the DB (2 db tables, actually!)
-  // for right now, we're also maintaining in-process in clickCounts, which is what we return to client
-
-  res.send(clickCounts[row-1][col-1].toString());
+  // above, we're updating cumulative clicks in the DB
+  // don't return anything -- client's map will pick up via periodic polling update
+  res.send("click");
 });
 
 http.createServer(app).listen(app.get('port'), function(){

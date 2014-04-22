@@ -3,7 +3,7 @@
 	border-color: #652712;
 }
 
-.mapbox {
+.mapcell {
 	height: 1cm;
 	width: 1cm;
 	background-color: #b0c4de;
@@ -21,4 +21,4 @@
 	background-color: #40c4be;
 }
 
-.mapbox:hover{background-color: #984201;}
+.mapcell:hover{background-color: #984201;}
