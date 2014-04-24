@@ -22,14 +22,14 @@ block content
     div(class="jumbotron")
       p
         div(class="alert")
+          | Current color
           button(id="userColorIndicator" class="btn")
         div(class="btn-group")
-          button(id="color1" class="btn") L
-          button(id="color2" class="btn") M
-          button(id="color3" class="btn") R
+          button(id="color1" class="btn")
+          button(id="color2" class="btn")
+          button(id="color3" class="btn")
         a(class="btn btn-lg btn-success", data-toggle="modal", href="#signupModal") Register.
         button(id="status", type="button", class="btn btn-primary") Update Status
-        button(id="getmaptile", type="button", class="btn btn-primary") Read Map Tile
     div(class="footer")
       p
         | Partially powered by SomaFM Groove Salad -- consider 
@@ -41,7 +41,7 @@ block content
         div(class="modal-content")
           div(class="modal-header")
             button(type="button", class="close", data-dismiss="modal", aria-hidden="true") &times;
-            h4(class="modal-title") This is a modal dialog where you can type.
+            h4(class="modal-title") Doesn't actually register you.
           div(class="modal-body")
             form(id="signupForm", role="form")
               input(type="hidden", id="theme", name="theme", value="flatly")
@@ -51,9 +51,6 @@ block content
               div(class="form-group")
                 label(for="email") Email address
                 input(type="email", class="form-control", id="email", name="email", placeholder="Your email address")
-              div(class="form-group")
-                label(for="monkey") Favorite monkey
-                input(type="text", class="form-control", id="monkey", name="monkey", placeholder="Your favorite monkey")
               div(class="form-group")
                 label(for="previewAccess") Would you like to answer a yes/no question?
                 select(class="form-control", name="previewAccess")
