@@ -42,6 +42,29 @@ var sns = new AWS.SNS({ region: config.AWS_REGION});
 
 console.log(process.env);
 
+
+// Global Server Variables
+
+// Client can grab messages, mostly for debugging
+var serverStatus = 'Server Status';
+
+// these should agree with client & bot.js definitions, see .../index.jade
+var tileWidth = 10;  // x
+var tileHeight = 10; // y
+
+// can decide whether diagonal cells are "connected" and thus can encircle
+// NOTE: false case won't work completely if (below) we are only checking encirclement on 4 sides.
+//  for non-diagonal, a new piece could have nbrs on all 4 sides, we've gotta check at diagonals too
+var diagonalsConnected = true;
+
+// time of last map update
+// Caveats:
+//   for now this is just approximate, should be generated in DB txn 
+//   for now this is "global" for map.  should be on per-tile basis
+//   click on player's own piece is counted as "update" , though only changes click-count
+var lastUpdateTime = (new Date()).getTime();
+serverStatus += ' ' + lastUpdateTime;
+
 //GET home page.
 app.get('/', routes.index);
 
@@ -187,6 +210,15 @@ function isMine(position, color, mapTile) {
   }
 }
 
+function fillEnclosures(fillList) {
+  fillList.forEach(forEach(cell) {
+    var x = item.x;
+    var y = item.y;
+    var numSteps = item.numSteps;
+    serverStatus += '<br>Filling from: ' + x + ',' + y + ' numSteps was: ' + numSteps;
+  });
+}
+
 
 var eventEmitter = new events.EventEmitter();
 eventEmitter.on('piecePlaced', function(x,y) {
@@ -229,19 +261,7 @@ var encirclement = function encirclement(placedX, placedY) {
         mapTileCells[cellX][cellY] = {cellNum : cellNum, cellColor : cellColor};
       });
     }
-    
 
-
-    // for debugging readmaptile
-    // console.log('99999 in encirclement: ')
-    //for (var y=9; y>=0; y--) {
-    //  var rowColors = "";
-    //  for (var x=0; x<10; x++) {
-    //    rowColors += mapTileCells[x][y].cellColor + ", ";
-    //  }
-    //  console.log("y=" + y + ": " + rowColors);
-    //}
-    
     // Test if newly placed piece created an "encirclement" of cells not belonging to the player.
     // Will look at each side as potential start.  Then traverse.
     // Establish and maintain this invariant:
@@ -256,76 +276,160 @@ var encirclement = function encirclement(placedX, placedY) {
     // numRightTurns : net number of right-hand turns we've made
 
     // other notes:
-    //   diagonal connections do not count for encirclement (for now)
+    //   diagonal connections do count for encirclement (for now)
     //   a single piece could generate two encircled regions (potentially 4 if diagonal connections count)
     //   player owning a cell currently determined by color, this will change when we have registration
     //   out-of-bounds beyond current tile -- eventually extend to infinite
 
     var playerColor = mapTileCells[placedX][placedY].cellColor;
-    serverStatus = '  Encirc @ (' + placedX + ',' + placedY + ') ';
+    serverStatus += '  Encirc @ (' + placedX + ',' + placedY + ') ';
+    var fillList = [];
     ['L', 'U', 'R', 'D'].forEach(function(startingDirection) {
       var left = [placedX, placedY];
       var startingLeft = [placedX, placedY];
       var startingVector = directionToVector(startingDirection);
       var directionVector = directionToVector(startingDirection);
-      var right = getRightCell(left, directionVector);
       if (!outOfBounds(right) && !isMine(right, playerColor, mapTileCells)) {
-        serverStatus += '  Direction:' + startingDirection + ' suitable. ';
+        serverStatus += '<br>==>' + startingDirection + ': ';
         var backAtStart = false;
         var numRightTurns = 0;
+        var numSteps = 0;
         while (!backAtStart) {
+          numSteps += 1;
           // figure out next traversal step based on what is in front of us
           var forwardLeft = getForwardLeftCell(left, directionVector);
           var forwardRight = getForwardRightCell(left, directionVector);
-          if (isMine(forwardRight, playerColor, mapTileCells)) {
+          if (isMine(forwardLeft, playerColor, mapTileCells)&&
+              isMine(forwardRight, playerColor, mapTileCells)) {
             //
             //  Turn right
             //
-            serverStatus += 'RT:[[[' + left[0] + ',' + left[1] + '][' + directionVector[0] + ',' + directionVector[1] + ']]]===>';
+            //serverStatus += 'RT:[[[' + left[0] + ',' + left[1] + '][' + directionVector[0] + ',' + directionVector[1] + ']]]===>';
             directionVector = rightTurn(directionVector);
             left[0] = forwardRight[0];
             left[1] = forwardRight[1];
             numRightTurns += 1;
-            serverStatus += '[[[' + left[0] + ',' + left[1] + '][' + directionVector[0] + ',' + directionVector[1] + ']]]';
+            //serverStatus += '[[[' + left[0] + ',' + left[1] + '][' + directionVector[0] + ',' + directionVector[1] + ']]]';
+          } else if (!isMine(forwardLeft, playerColor, mapTileCells)&&
+                      isMine(forwardRight, playerColor, mapTileCells)) {
+            //
+            //  "Diagonal case" -- 
+            //     if diagonal connections count -- turn right
+            //     if diagonal connections don't count -- turn left
+            //
+            if (diagonalsConnected) {
+              // turn right
+              //serverStatus += 'DRT:[[[' + left[0] + ',' + left[1] + '][' + directionVector[0] + ',' + directionVector[1] + ']]]===>';
+              directionVector = rightTurn(directionVector);
+              left[0] = forwardRight[0];
+              left[1] = forwardRight[1];
+              numRightTurns += 1;
+              //serverStatus += '[[[' + left[0] + ',' + left[1] + '][' + directionVector[0] + ',' + directionVector[1] + ']]]';
+            } else {
+              // turn left
+              // left cell stays the same
+              //serverStatus += 'DLT:[[[' + left[0] + ',' + left[1] + '][' + directionVector[0] + ',' + directionVector[1] + ']]]===>';
+              directionVector = rightTurn(rightTurn(rightTurn(directionVector)));
+              numRightTurns -= 1; 
+              //serverStatus += '[[[' + left[0] + ',' + left[1] + '][' + directionVector[0] + ',' + directionVector[1] + ']]]';
+            }
           } else if (isMine(forwardLeft, playerColor, mapTileCells)) {
             //
             // Go straight ahead
             //
             // direction doesn't' change
-            serverStatus += 'SA:[[[' + left[0] + ',' + left[1] + '][' + directionVector[0] + ',' + directionVector[1] + ']]]===>';
+            //serverStatus += 'SA:[[[' + left[0] + ',' + left[1] + '][' + directionVector[0] + ',' + directionVector[1] + ']]]===>';
             left[0] = forwardLeft[0];
             left[1] = forwardLeft[1];
             // no right turn
-            serverStatus += '[[[' + left[0] + ',' + left[1] + '][' + directionVector[0] + ',' + directionVector[1] + ']]]';
+            //serverStatus += '[[[' + left[0] + ',' + left[1] + '][' + directionVector[0] + ',' + directionVector[1] + ']]]';
           } else {
             //
             // Turn left
             //
-            serverStatus += 'LT:[[[' + left[0] + ',' + left[1] + '][' + directionVector[0] + ',' + directionVector[1] + ']]]===>';
+            //serverStatus += 'LT:[[[' + left[0] + ',' + left[1] + '][' + directionVector[0] + ',' + directionVector[1] + ']]]===>';
             // left cell stays the same
             directionVector = rightTurn(rightTurn(rightTurn(directionVector)));
             numRightTurns -= 1; 
-            serverStatus += '[[[' + left[0] + ',' + left[1] + '][' + directionVector[0] + ',' + directionVector[1] + ']]]';
+            //serverStatus += '[[[' + left[0] + ',' + left[1] + '][' + directionVector[0] + ',' + directionVector[1] + ']]]';
           }
-          serverStatus += '...left: (' + left[0] + ',' + left[1] + '), dir: (' + directionVector[0] + ',' + directionVector[1] + ')';
           if (samePosition(left, startingLeft) && sameVector(directionVector, startingVector)) {
             backAtStart = true;
-            serverStatus += 'back at start! ... numrights = ' + numRightTurns;
+            serverStatus += '..back at start.  NumSteps: ' + numSteps + ', numRightTurns: ' + numRightTurns;
             if (numRightTurns == 4) {
               //
               // We Encircled something!
               //
               serverStatus += '...BINGO!';
-              // TODO do stuff
+              var right = getRightCell(left, directionVector);
+              //
+              // The cell to the right (not belonging to player) has been encircled
+              // save it as one of the places to go fill
+              fillList.push({x: right[0], y: right[1], numSteps : numSteps});
             }
           }
         }
         console.log(serverStatus);
       }
     });
+    fillEnclosures(fillList);
   });
 }
 
+// is it ok to place "color" at x,y?
+// if so, do it!
+function move(x, y, pieceColor) {
+  var scanObject = {
+    TableName: config.CROSSCUT_SIMPLE_CELL_COUNTS,
+  }
+
+  db.scan(scanObject, function(err,data) {
+    if (err) {
+      console.log('Error getting map data: ' + err);
+    } else {
+      //
+      // CHECK IT OUT!
+      // we read the entire 10x10 tile and search for the cell we want, then throw everything else away!
+      // LOL
+      data.Items.forEach(function(item) {
+        var cellNum = item.cellnum.N;
+        var cellColor = item.Color.S;
+        var cellX = (cellNum-1) % tileWidth;
+        var cellY = Math.floor((cellNum-1)/tileHeight);
+        if (cellX==x && cellY==y) {
+          serverStatus += ' at: ' + x + ',' + y + ', cell color: ' + cellColor + ' vs piece color: ' + pieceColor + ' ';
+          if (cellColor != pieceColor) {
+            serverStatus += 'in move  ... placing new piece';
+
+            var moveData = {
+              TableName: config.CROSSCUT_SIMPLE_CELL_COUNTS,
+              Key: {
+                'cellnum': {'N': cellNum.toString()}
+              },
+              AttributeUpdates: {'ClickCount': {'Value': {'N': '1'},'Action': 'ADD'},
+                                 'Color': {'Value': {'S': pieceColor}, 'Action': 'PUT'}
+                                },
+              ReturnValues: "ALL_NEW"
+            }
+
+            db.updateItem(moveData, function(err, data) {
+              if (err) {
+                console.log('Error adding move to database: ', err);
+              } else {
+                // new piece placed successfully
+                // trigger anything else that needs doing
+                lastUpdateTime = (new Date()).getTime();
+                eventEmitter.emit('piecePlaced', cellX, cellY);
+              }
+            });
+          } else {
+            serverStatus += 'same color, not testing encirclement';
+          }
+        }
+      });
+    }
+  });
+}
 
 app.post('/getmap', function(req, res) {
 
@@ -335,26 +439,23 @@ app.post('/getmap', function(req, res) {
 
   db.scan(scanObject, function(err,data) {
     if (err) {
-      console.log('Error getting new map data: ' + err);
+      console.log('Error getting map data: ' + err);
       res.send('scan error getting map');
     } else {
+      data.Timestamp = lastUpdateTime;
       res.send(data);
     }
   });
 });
 
-var serverStatus = 'Server Status';
-
 app.post('/status', function(req, res) {
   res.send(serverStatus);
-})
-
-var postCount = 0;
-app.post('/inquiry', function(req, res) {
-  postCount += 1;
-  res.send('c' + postCount);
 });
 
+app.post('/getupdatetime', function(req, res) {
+  console.log('777777 received getupdatetime POST request');
+  res.send('' + lastUpdateTime);
+}); 
 
 // found on StackOverflow -- creates n-dimensional array as specified
 function createArray(dimensions) {
@@ -370,10 +471,6 @@ function createArray(dimensions) {
 }
 
 
-// these should agree with client & bot.js definitions, see .../index.jade
-var tileWidth = 10;  // x
-var tileHeight = 10; // y
-
 app.post('/clicker', function(req, res) {
   var cellX = parseInt(req.body.cellX);
   var cellY = parseInt(req.body.cellY);
@@ -384,33 +481,9 @@ app.post('/clicker', function(req, res) {
   var cellNum = tileWidth*(cellY) + cellX + 1;  // should be 1-100
   var cellString = 'cell'+cellNum;
 
+  move(cellX, cellY, color);
 
-  // update in CSCC table
-  var countData = {
-    TableName: config.CROSSCUT_SIMPLE_CELL_COUNTS,
-    Key: {
-      'cellnum': {'N': cellNum.toString()}
-    },
-    AttributeUpdates: {'ClickCount': {'Value': {'N': '1'},'Action': 'ADD'},
-                       'Color': {'Value': {'S': color}, 'Action': 'PUT'}
-                      },
-    ReturnValues: "ALL_NEW"
-  }
 
-  db.updateItem(countData, function(err, data) {
-    if (err) {
-      console.log('Error adding CSCC to database: ', err);
-    } else {
-    }
-  });
-
-  console.log('in /clicker  ... emitting event...');
-  // TODO: emit placedPiece event to trigger this!
-  eventEmitter.emit('piecePlaced', cellX, cellY);
-  //encirclement(cellX, cellY);
-
-  // above, we're updating cumulative clicks in the DB
-  // don't return anything -- client's map will pick up via periodic polling update
   res.send("click");
 });
 

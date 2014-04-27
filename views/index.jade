@@ -1,22 +1,20 @@
 extends layout
 
-var c1 = '#33BB55';
-var c2 = '#888855';
-var c3 = '#BB3355';
+
 
 block content
   div(class="container")
     div(class="header")
       h3(class="text-muted") Accretion Green
     div(id="signupSuccess", class="alert alert-success", style="display:none")
-      p(id="signupSuccessText") Thanks for entering information! We might keep your information!!!.
+      p(id="signupSuccessText") Thanks for trying to register.
     div(id="statusMessage", class="alert alert-success", style="display:none")
       p(id="statusMessageText") status
     div(id="signupError", class="alert alert-info", style="display:none")
       p(id="signupErrorText") This alert probably means you're viewing a static webpage, not a dynamic one.  Or maybe we had a server error.
 
-    div(id="mapContainer", style="width:10.5cm; background-color: #9966CC;")
-      p(id="mapContainerText") ...
+    div(id="mapContainer", style="width:10.5cm;")
+      p(id="mapContainerText")
       div(id="mapContainerAnchor")
 
     div(class="jumbotron")
@@ -61,15 +59,24 @@ block content
   script(src="../static/jquery/jquery.js")
   script(src="../static/bootstrap/js/bootstrap.min.js")
 
-  // the following should agree with values in server.js
+  // these are all "global" client variables
   script.
+    // the following should agree with values in server.js
     var tileWidth  = 10;
     var tileHeight = 10;
+  
     var userColor = '#555555';
     var userColorChoice = '#444477';
-    var c1 = '#33BB55';
-    var c2 = '#888855';
-    var c3 = '#BB3355';
+    //var c1 = '#33BB55';
+    //var c2 = '#888855';
+    //var c3 = '#BB3355';
+    var c1 = '#DD0000';
+    var c2 = '#00EE00';
+    var c3 = '#0000DD';
+    
+    var timeOfLastServerUpdate = 1;  // *server* time -- what server tells us
+    var timeOfLastClientUpdate = 0; // also *server* time -- do we need this?  TODO
+
 
 
   script.
@@ -149,6 +156,14 @@ block content
     })
 
   script.
+    function getLastServerUpdateTime() {
+        $.post( "/getupdatetime", 'get update time',
+              function(data) {
+                timeOfLastServerUpdate = data;
+              });
+    }
+
+  script.
     function updateMap() {
         $.post( "/getmap", 'get map',
                 function(data) {
@@ -162,36 +177,30 @@ block content
                     $(mapCellId).html(count);
                     $(mapCellId).css({backgroundColor: color});
                   });
+                  // server passes us the (server) time that the passed data was last updated
+                  timeOfLastClientUpdate = data.Timestamp;
               });
-      }
-
+    }
 
   script.  
     function doUpdaterPoll(){
-      console.log("running updater...");
-      updateMap();
-      setTimeout(doUpdaterPoll,3000);
+      getLastServerUpdateTime();
+      if (timeOfLastServerUpdate > timeOfLastClientUpdate) {
+        console.log('==55555== update needed, been this many msec: ' + (timeOfLastServerUpdate - timeOfLastClientUpdate));
+        updateMap();
+        timeOfLastClientUpdate = timeOfLastServerUpdate;
+      } else {
+      }
+      setTimeout(doUpdaterPoll,1000);
     }
 
-  // update map when document loads and anytime button is clicked
-  // and set to poll every 3 seconds
+  // update map when document loads and anytime cell is clicked
+  // and start polling
   script.
     $(document).ready(updateMap())
+    getLastServerUpdateTime();
   script.
     $(document).ready(doUpdaterPoll())
-
-
-  // read map tile
-  script.
-    $(document).ready(function() {
-      $("#getmaptile").click(function() {
-        console.log('777777client calling getmaptile');
-        $.post("/getmaptile", 'Get Map Tile',
-              function(data) {
-              })
-      })
-    });
-
 
   // retrieve status from server
   script.
