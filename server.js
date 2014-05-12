@@ -239,7 +239,6 @@ function readMapTile(x, y, callback) {
       // each cell's contents is an object -- color only now; in future, may contain a bunch of stuff
       mapTile.colors = JSON.parse(data.Item.JsonTile.S);
       //following is what we expect, and returns what we expects
-      //console.log('maptile object, stringified, in rmt():' + JSON.stringify(mapTile));
       callback(mapTile);
     }
   });
@@ -265,7 +264,6 @@ var writeMapTile = function (x, y, cellContents, callback) {
     if (err) {
       console.log('Error adding map tile to database: ', err);
     } else {
-      console.log('Map tile at (' + x + ',' + y + ') written to database.');
       callback();
     }
   });
@@ -299,7 +297,6 @@ function fillEnclosures(fillList, mapTile, playerColor) {
     }
     var x = cellObj.x;
     var y = cellObj.y;
-    serverStatus += '<br> popped  (ln=' + (fillList.length+1) + ') ' + x + ',' + y;
     if (mapTile.colors[x][y].mark == undefined || mapTile.colors[x][y].mark == false) {
       mapTile.colors[x][y].mark = true;
       fillCells.push([x,y]);
@@ -307,15 +304,12 @@ function fillEnclosures(fillList, mapTile, playerColor) {
       // (numSteps/4)^2 is really the bound
       //var numSteps = cellObj.numSteps;
       //var regionBound = Math.floor(numSteps * numSteps / 10) + 1;  // TODO not yet used
-      var regionBound = 1000; // drop in a number so no infinite loop
-      serverStatus += '<br>Filling from: ' + x + ',' + y + ', maptile color: ' + mapTile.colors[x][y].color;
       ['L', 'U', 'R', 'D'].forEach(function(direction) {
         var adjacentCell = getCellInDirection(x, y, direction);
         var adjX = adjacentCell[0];
         var adjY = adjacentCell[1];
         if (!outOfBounds(adjacentCell) && !isMine(adjacentCell, playerColor, mapTile)) {
           if (mapTile.colors[adjX][adjY].mark == undefined || mapTile.colors[adjX][adjY].mark == false) {
-            serverStatus += ' pushing (ln=' + (fillList.length+1) + ') ' + adjX + ',' + adjY;
             fillList.push({x: adjX, y: adjY, numSteps: numPops});
           }
         }
@@ -323,7 +317,6 @@ function fillEnclosures(fillList, mapTile, playerColor) {
     }
   }
   
-  serverStatus += 'need to fill with color: ' + playerColor;
   fillCells.forEach(function(cell) {
     serverStatus += ' ' + cell[0] + ',' + cell[1];
   });
@@ -341,19 +334,13 @@ function fillEnclosures(fillList, mapTile, playerColor) {
     var y = cell[1];
     updatedColors[x][y].color = playerColor;
   });
-  console.log('fillEnclosures, calling writeMapTile()');
-  serverStatus += 'filled writeable map, calling writeMapTile()  ';
   writeMapTile(0, 0, updatedColors, function() {
-    console.log('back from  writeMapTile()');
-    serverStatus += ' back from  writeMapTile()';
   });
 }
 
 
 var eventEmitter = new events.EventEmitter();
 eventEmitter.on('piecePlaced', function(x,y, color) {
-  console.log('piecePlaced event, color: ' + color + ' at: ' + x + ',' + y);
-
   encirclement(x, y, color);
 });
 
@@ -366,9 +353,6 @@ eventEmitter.on('piecePlaced', function(x,y, color) {
 // Initial version works in single tile.  Eventual version should read neighboring tiles as needed.
 // TODO: breakout reading of mapTile into separate fn
 var encirclement = function encirclement(placedX, placedY, playerColor) {
-
-  console.log('in encirc(), color: ' + playerColor + ' at: ' + placedX + ',' + placedY);
-
 
   readMapTile(0, 0, function(mapTile) {
     // Test if newly placed piece created an "encirclement" of cells not belonging to the player.
@@ -391,16 +375,10 @@ var encirclement = function encirclement(placedX, placedY, playerColor) {
     //   out-of-bounds beyond current tile -- eventually extend to infinite
 
 
-    // TODO check that (x,y) is still playerColor  ... or use the same mapTile everywhere
-    console.log('in encirc(), did rmt(), placed color: ' + playerColor + ' at: ' + placedX + ',' + placedY + ' maptile color: ' + mapTile.colors[placedX][placedY].color);
-
     if (mapTile.colors[placedX][placedY].color != playerColor) {
-      console.log('GAAH!  == unexpected color at x.y, while running encirclement!  bailing out!!!')
-      serverStatus += 'GAAH!  == unexpected color at x.y, while running encirclement!  bailing out!!!';
+      console.log('GAAH!  == unexpected color at x.y, while running encirclement!  bailing out!!!');
+      return;
     }
-
-    serverStatus += '  Encirc @ (' + placedX + ',' + placedY + ') ';
-    console.log('back from rmt() in encirc(), maptile object, stringified:' + JSON.stringify(mapTile));
 
     var fillList = [];
     ['L', 'U', 'R', 'D'].forEach(function(startingDirection) {
@@ -410,30 +388,27 @@ var encirclement = function encirclement(placedX, placedY, playerColor) {
       var directionVector = directionToVector(startingDirection);
       var right = getRightCell(left, directionVector);
       if (!outOfBounds(right) && !isMine(right, playerColor, mapTile)) {
-        serverStatus += '<br>==>' + startingDirection + ': ';
         var backAtStart = false;
         var numRightTurns = 0;
         var numSteps = 0;
         while (!backAtStart) {
           numSteps += 1;
-          if (numSteps > 150) {
-            console.log('Too many steps during encirclement from (' + placedX + ',' + placedY + '): ' + numSteps);
+          if (numSteps > 1000) {
+            console.log('Too many steps (> 1000) during encirclement from (' + placedX + ',' + placedY + '): ' + numSteps);
+            return;
           }
           // figure out next traversal step based on what is in front of us
           var forwardLeft = getForwardLeftCell(left, directionVector);
           var forwardRight = getForwardRightCell(left, directionVector);
-          process.stdout.write('encirc from: ' + placedX + ',' + placedY + '.  l=[' + left[0] + '][' + left[1] + '],fl=[' + forwardLeft[0] + '][' + forwardLeft[1] + '],fr=[' + forwardRight[0] + '][' + forwardRight[1] + ']');
           if (isMine(forwardLeft, playerColor, mapTile)&&
               isMine(forwardRight, playerColor, mapTile)) {
             //
             //  Turn right
             //
-            //serverStatus += 'RT:[[[' + left[0] + ',' + left[1] + '][' + directionVector[0] + ',' + directionVector[1] + ']]]===>';
             directionVector = rightTurn(directionVector);
             left[0] = forwardRight[0];
             left[1] = forwardRight[1];
             numRightTurns += 1;
-            //serverStatus += '[[[' + left[0] + ',' + left[1] + '][' + directionVector[0] + ',' + directionVector[1] + ']]]';
           } else if (!isMine(forwardLeft, playerColor, mapTile)&&
                       isMine(forwardRight, playerColor, mapTile)) {
             //
@@ -443,48 +418,38 @@ var encirclement = function encirclement(placedX, placedY, playerColor) {
             //
             if (diagonalsConnected) {
               // turn right
-              //serverStatus += 'DRT:[[[' + left[0] + ',' + left[1] + '][' + directionVector[0] + ',' + directionVector[1] + ']]]===>';
               directionVector = rightTurn(directionVector);
               left[0] = forwardRight[0];
               left[1] = forwardRight[1];
               numRightTurns += 1;
-              //serverStatus += '[[[' + left[0] + ',' + left[1] + '][' + directionVector[0] + ',' + directionVector[1] + ']]]';
             } else {
               // turn left
               // left cell stays the same
-              //serverStatus += 'DLT:[[[' + left[0] + ',' + left[1] + '][' + directionVector[0] + ',' + directionVector[1] + ']]]===>';
               directionVector = rightTurn(rightTurn(rightTurn(directionVector)));
               numRightTurns -= 1; 
-              //serverStatus += '[[[' + left[0] + ',' + left[1] + '][' + directionVector[0] + ',' + directionVector[1] + ']]]';
             }
           } else if (isMine(forwardLeft, playerColor, mapTile)) {
             //
             // Go straight ahead
             //
             // direction doesn't' change
-            //serverStatus += 'SA:[[[' + left[0] + ',' + left[1] + '][' + directionVector[0] + ',' + directionVector[1] + ']]]===>';
             left[0] = forwardLeft[0];
             left[1] = forwardLeft[1];
             // no right turn
-            //serverStatus += '[[[' + left[0] + ',' + left[1] + '][' + directionVector[0] + ',' + directionVector[1] + ']]]';
           } else {
             //
             // Turn left
             //
-            //serverStatus += 'LT:[[[' + left[0] + ',' + left[1] + '][' + directionVector[0] + ',' + directionVector[1] + ']]]===>';
             // left cell stays the same
             directionVector = rightTurn(rightTurn(rightTurn(directionVector)));
             numRightTurns -= 1; 
-            //serverStatus += '[[[' + left[0] + ',' + left[1] + '][' + directionVector[0] + ',' + directionVector[1] + ']]]';
           }
           if (samePosition(left, startingLeft) && sameVector(directionVector, startingVector)) {
             backAtStart = true;
-            serverStatus += '..back at start.  NumSteps: ' + numSteps + ', numRightTurns: ' + numRightTurns;
             if (numRightTurns == 4) {
               //
               // We Encircled something!
               //
-              serverStatus += '...BINGO!';
               var right = getRightCell(left, directionVector);
               //
               // The cell to the right (not belonging to player) has been encircled
@@ -506,9 +471,6 @@ var encirclement = function encirclement(placedX, placedY, playerColor) {
 // is it ok to place "color" at x,y?
 // if so, do it!
 function move(x, y, pieceColor) {
-  console.log('in move(), color: ' + pieceColor + ' at: ' + x + ',' + y);
-  globalX = x; //DEBUG
-  globalY = y; //DEBUG
 
   readMapTile(0, 0, function(mapTile) {
     var cellColor = mapTile.colors[x][y].color;
@@ -561,10 +523,6 @@ app.post('/clicker', function(req, res) {
   var cellX = parseInt(req.body.cellX);
   var cellY = parseInt(req.body.cellY);
   var color = req.body.color;
-
-  console.log('/clicker request, color: ' + color + ' at: ' + cellX + ',' + cellY);
-
-  serverStatus = 'cell x, y = ' + cellX + ', ' + cellY + ' clicked';
 
   move(cellX, cellY, color);
 
