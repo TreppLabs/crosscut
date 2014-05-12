@@ -19,18 +19,16 @@ block content
 
     div(class="jumbotron")
       p
-        div(class="alert")
-          | Current color
-          button(id="userColorIndicator" class="btn")
         div(class="btn-group")
-          button(id="color1" class="btn")
-          button(id="color2" class="btn")
-          button(id="color3" class="btn")
+          button(id="color1" class="btn color-button")
+          button(id="color2" class="btn color-button")
+          button(id="color3" class="btn color-button")
+          button(id="color4" class="btn color-button")
         a(class="btn btn-lg btn-success", data-toggle="modal", href="#signupModal") Register.
-        button(id="status", type="button", class="btn btn-primary") Update Status
+        button(id="status", type="button", class="btn btn-primary") Server Status
     div(class="footer")
       p
-        | Partially powered by SomaFM Groove Salad -- consider 
+        Partially powered by SomaFM Groove Salad -- consider 
         a(href="http://www.somafm.com/support/") donating to SomaFM
         
     // Modal
@@ -65,42 +63,43 @@ block content
     var tileWidth  = 10;
     var tileHeight = 10;
   
-    var userColor = '#555555';
-    var userColorChoice = '#444477';
-    //var c1 = '#33BB55';
-    //var c2 = '#888855';
-    //var c3 = '#BB3355';
-    var c1 = '#DD0000';
-    var c2 = '#00EE00';
-    var c3 = '#0000DD';
+    var emptyCellColor = '#B99F67'
+    var userColorChoice = emptyCellColor;
+    var c1 = '#78856D';
+    var c2 = '#9A772C';
+    var c3 = '#675B3F';
+    var c4 = '#766457';
     
     var timeOfLastServerUpdate = 1;  // *server* time -- what server tells us
     var timeOfLastClientUpdate = 0; // also *server* time -- do we need this?  TODO
 
-
-
   script.
     $(document).ready(function () {
-          $('#color1').attr('style', 'background-color: ' + c1);
-          $('#color2').attr('style', 'background-color: ' + c2);
-          $('#color3').attr('style', 'background-color: ' + c3);
+          $('.color-button').css('border', '5px solid transparent')
+          $('#color1').css('background-color', c1);
+          $('#color2').css('background-color', c2);
+          $('#color3').css('background-color', c3);
+          $('#color4').css('background-color', c4);
           $('#color1').click(function() {
             userColorChoice = c1;
-            $('#userColorIndicator').attr('style', 'background-color: ' + userColorChoice);
+            $('.color-button').css('border', '5px solid transparent')
+            $('#color1').css('border', 'solid 5px black');
           });
           $('#color2').click(function() {
             userColorChoice = c2;
-            $('#userColorIndicator').attr('style', 'background-color: ' + userColorChoice);
+            $('.color-button').css('border', '5px solid transparent')
+            $('#color2').css('border', 'solid 5px black');
           });
           $('#color3').click(function() {
             userColorChoice = c3;
-            $('#userColorIndicator').css("background-color", userColorChoice);
+            $('.color-button').css('border', '5px solid transparent')
+            $('#color3').css('border', 'solid 5px black');
           });
-    });
-
-  script.
-    $(document).ready(function () {
-          $('#userColorIndicator').attr('style', 'background-color: ' + userColorChoice);
+          $('#color4').click(function() {
+            userColorChoice = c4;
+            $('.color-button').css('border', '5px solid transparent')
+            $('#color4').css('border', 'solid 5px black');
+          });
     });
 
   script.
@@ -110,7 +109,7 @@ block content
           var newDiv  = document.createElement('div');
           $(newDiv).attr('id', 'mx' + j + "my" + i);
           $(newDiv).attr('class', 'mapcell');
-          $(newDiv).text('Z'+i+j);
+          //$(newDiv).text('Z'+i+j);
           $('#mapContainer').append(newDiv);
         }
       }
@@ -148,7 +147,6 @@ block content
         var yPos = boxId.indexOf("my");
         var cellX = boxId.substring(xPos+2, yPos);
         var cellY = boxId.substring(yPos+2);
-        console.log('/clicker' + "cellX: " + cellX + ", cellY: " + cellY + ", color: " + userColorChoice);
         $.post( "/clicker", {"cellX" : cellX, "cellY" : cellY, "color" : userColorChoice},
                 function(data) {
                 });
@@ -163,22 +161,44 @@ block content
               });
     }
 
+  // old way that uses result from readMapTileOld() on server
+  // TODO delete when stuff below is working
+  //script.
+  //  function updateMap() {
+  //      $.post( "/getmap", 'get map',
+  //              function(data) {
+  //                $.each(data.Items, function(index, value){
+  //                  var cell = value.cellnum.N;
+  //                  var cellX = (cell-1) % tileWidth;
+  //                  var cellY = Math.floor((cell-1)/tileHeight);
+  //                  var count = value.ClickCount.N;
+  //                  var mapCellId = "#mx" + cellX + "my" + cellY;
+  //                  var color = value.Color.S;
+  //                  $(mapCellId).html(count);
+  //                  $(mapCellId).css({backgroundColor: color});
+  //                });
+  //                // server passes us the (server) time that the passed data was last updated
+  //                timeOfLastClientUpdate = data.Timestamp;
+  //            });
+  //  }
+
   script.
     function updateMap() {
         $.post( "/getmap", 'get map',
-                function(data) {
-                  $.each(data.Items, function(index, value){
-                    var cell = value.cellnum.N;
-                    var cellX = (cell-1) % tileWidth;
-                    var cellY = Math.floor((cell-1)/tileHeight);
-                    var count = value.ClickCount.N;
-                    var mapCellId = "#mx" + cellX + "my" + cellY;
-                    var color = value.Color.S;
-                    $(mapCellId).html(count);
-                    $(mapCellId).css({backgroundColor: color});
-                  });
+                function(mapTile) {
+                  //when multiple tiles, mapTile.id looks like x0yo  or x10y20 ... coords of lower left corner
+                  //mapTile.id;
+              
+                  for (var x=0; x<tileWidth; x++) {
+                    for (var y=0; y<tileHeight; y++) {
+                      var color = mapTile.colors[x][y].color;
+                      var mapCellId = "#mx" + x + "my" + y;
+                      $(mapCellId).css({backgroundColor: color});
+                    }
+                  }
+
                   // server passes us the (server) time that the passed data was last updated
-                  timeOfLastClientUpdate = data.Timestamp;
+                  timeOfLastClientUpdate = mapTile.updateTime;
               });
     }
 
@@ -186,7 +206,6 @@ block content
     function doUpdaterPoll(){
       getLastServerUpdateTime();
       if (timeOfLastServerUpdate > timeOfLastClientUpdate) {
-        console.log('==55555== update needed, been this many msec: ' + (timeOfLastServerUpdate - timeOfLastClientUpdate));
         updateMap();
         timeOfLastClientUpdate = timeOfLastServerUpdate;
       } else {

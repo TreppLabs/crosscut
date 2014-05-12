@@ -78,7 +78,6 @@ app.post('/signup', function(req, res) {
 });
 
 
-
 //Add signup form data to database.
 var signup = function (nameSubmitted, emailSubmitted, previewPreference) {
   var formData = {
@@ -199,10 +198,10 @@ function sameVector(vec1, vec2) {
 }
 
 
-function isMine(position, color, mapTile) {
+function isMine(position, myColor, mapTile) {
   if (outOfBounds(position)) {
     return false;
-  } else if (mapTile[position[0]][position[1]].cellColor == color) {
+  } else if (myColor == mapTile.colors[position[0]][position[1]].color) {
     return true;
   } else {
     // empty or belongs to someone else
@@ -210,19 +209,152 @@ function isMine(position, color, mapTile) {
   }
 }
 
-function fillEnclosures(fillList) {
-  fillList.forEach(forEach(cell) {
-    var x = item.x;
-    var y = item.y;
-    var numSteps = item.numSteps;
-    serverStatus += '<br>Filling from: ' + x + ',' + y + ' numSteps was: ' + numSteps;
+// read single tile of map 
+// lower left corner at x,y
+
+function readMapTile(x, y, callback) {
+  var dbGetObject = {
+    Key:
+    {
+      'MapTileId': {'S': 'x' + x + 'y' + y}
+    },
+  
+    TableName: config.CROSSCUT_MAPTILE_TABLE
+  }
+
+  db.getItem(dbGetObject, function(err,data) {
+    if (err) {
+      console.log('Error db.getting map tile: ' + err);
+      return;
+    } else {
+      // for occasional debugging -- as of v1051 a map tile was "roughly" 7724 bytes
+      //                          -- as of v1151 a map tile was "roughly" 4132 bytes (just colors now, dropped x.y)
+      // DynamoDB has a max return size of 64k
+      //console.log('map tile object size: ' + roughSizeOfObject(data));
+
+      var mapTile = {};
+      mapTile.id = data.Item.MapTileId.S;
+      mapTile.updateTime = data.Item.UpdateTime.S;
+      // TODO  make new column CellContents
+      // each cell's contents is an object -- color only now; in future, may contain a bunch of stuff
+      mapTile.colors = JSON.parse(data.Item.JsonTile.S);
+      //following is what we expect, and returns what we expects
+      //console.log('maptile object, stringified, in rmt():' + JSON.stringify(mapTile));
+      callback(mapTile);
+    }
+  });
+}
+
+// Write single map tile to database.
+// lower left corner at x,y
+// TODO: Check if it has been updated since our data was read.  If so, complain but write anyway.
+// TODO: consolidate other writes with this
+var writeMapTile = function (x, y, cellContents, callback) {
+  var updateTime = (new Date()).getTime();
+  lastUpdateTime = updateTime;
+
+  var mapTileData = {
+    TableName: config.CROSSCUT_MAPTILE_TABLE,
+    Item: {
+      MapTileId: {'S': 'x' + x + 'y' + y}, 
+      UpdateTime: {'S': '' + updateTime},
+      JsonTile: {'S': JSON.stringify(cellContents)}
+    }
+  };
+  db.putItem(mapTileData, function(err, data) {
+    if (err) {
+      console.log('Error adding map tile to database: ', err);
+    } else {
+      console.log('Map tile at (' + x + ',' + y + ') written to database.');
+      callback();
+    }
+  });
+};
+
+function getCellInDirection(x, y, direction) {
+  if (direction == 'U') {
+    return [x, y+1];
+  } else if (direction == 'R') {
+    return [x+1, y];
+  } else if (direction == 'D') {
+    return [x, y-1];
+  } else {
+    return [x-1, y];
+  }
+}
+
+// fillList includes 1-4 cells that were recently "encircled"
+// starting at each, fill their "regions" -- out to the enclosing ring of playerColor
+// some of the fill regions may connect, so we mark as we go
+function fillEnclosures(fillList, mapTile, playerColor) {
+  var fillCells = [];
+  var regionBound = 1000; // drop in a number so no infinite loop
+  var numPops = 0;
+  while(fillList.length > 0) {
+    var cellObj = fillList.pop();
+    numPops += 1;
+    if (numPops>regionBound) {
+      console.log('Too many cells during fill: ' + numPops + 'halting!!');
+      return;
+    }
+    var x = cellObj.x;
+    var y = cellObj.y;
+    serverStatus += '<br> popped  (ln=' + (fillList.length+1) + ') ' + x + ',' + y;
+    if (mapTile.colors[x][y].mark == undefined || mapTile.colors[x][y].mark == false) {
+      mapTile.colors[x][y].mark = true;
+      fillCells.push([x,y]);
+      // numSteps was roughly "perimeter" of enclosed region, so will be a bound on fill region
+      // (numSteps/4)^2 is really the bound
+      //var numSteps = cellObj.numSteps;
+      //var regionBound = Math.floor(numSteps * numSteps / 10) + 1;  // TODO not yet used
+      var regionBound = 1000; // drop in a number so no infinite loop
+      serverStatus += '<br>Filling from: ' + x + ',' + y + ', maptile color: ' + mapTile.colors[x][y].color;
+      ['L', 'U', 'R', 'D'].forEach(function(direction) {
+        var adjacentCell = getCellInDirection(x, y, direction);
+        var adjX = adjacentCell[0];
+        var adjY = adjacentCell[1];
+        if (!outOfBounds(adjacentCell) && !isMine(adjacentCell, playerColor, mapTile)) {
+          if (mapTile.colors[adjX][adjY].mark == undefined || mapTile.colors[adjX][adjY].mark == false) {
+            serverStatus += ' pushing (ln=' + (fillList.length+1) + ') ' + adjX + ',' + adjY;
+            fillList.push({x: adjX, y: adjY, numSteps: numPops});
+          }
+        }
+      });
+    }
+  }
+  
+  serverStatus += 'need to fill with color: ' + playerColor;
+  fillCells.forEach(function(cell) {
+    serverStatus += ' ' + cell[0] + ',' + cell[1];
+  });
+
+  // overwrite with new "fill" values on cells
+  // then write to DB
+  var updatedColors = createArray(tileWidth, tileHeight);
+  for (var x=0; x<tileWidth; x++) {
+    for (var y=0; y<tileHeight; y++) {
+      updatedColors[x][y] = {color: mapTile.colors[x][y].color};
+    }
+  }
+  fillCells.forEach(function(cell) {
+    var x = cell[0];
+    var y = cell[1];
+    updatedColors[x][y].color = playerColor;
+  });
+  console.log('fillEnclosures, calling writeMapTile()');
+  serverStatus += 'filled writeable map, calling writeMapTile()  ';
+  writeMapTile(0, 0, updatedColors, function() {
+    console.log('back from  writeMapTile()');
+    serverStatus += ' back from  writeMapTile()';
   });
 }
 
 
 var eventEmitter = new events.EventEmitter();
-eventEmitter.on('piecePlaced', function(x,y) {
-  encirclement(x,y);
+eventEmitter.on('piecePlaced', function(x,y, color) {
+  console.log('piecePlaced event, color: ' + color + ' at: ' + x + ',' + y);
+
+  encirclement(x, y, color);
 });
 
 // test whether the move at cell (x,y) has "encircled" opposing pieces
@@ -233,35 +365,12 @@ eventEmitter.on('piecePlaced', function(x,y) {
 // recursive fill
 // Initial version works in single tile.  Eventual version should read neighboring tiles as needed.
 // TODO: breakout reading of mapTile into separate fn
-var encirclement = function encirclement(placedX, placedY) {
-  var scanObject = {
-    TableName: config.CROSSCUT_SIMPLE_CELL_COUNTS,
-  }
+var encirclement = function encirclement(placedX, placedY, playerColor) {
 
-  var mapTileCells = createArray(tileWidth, tileHeight);
+  console.log('in encirc(), color: ' + playerColor + ' at: ' + placedX + ',' + placedY);
 
-  db.scan(scanObject, function(err,data) {
-    if (err) {
-      console.log('Error getting map tile: ' + err);
-      return;
-    } else {
-      console.log("99999 " + data.Count);  // 55555 delete
-      
-      // for occasional debugging -- as of v1051 a map tile was roughly 7724 bytes
-      // DynamoDB has a max return size of 64k
-      //console.log('map tile object size: ' + roughSizeOfObject(data));
 
-      // read map tile from db
-      data.Items.forEach(function(item) {
-        var cellNum = item.cellnum.N;
-        var cellColor = item.Color.S;
-        var cellX = (cellNum-1) % tileWidth;
-        var cellY = Math.floor((cellNum-1)/tileHeight);
-
-        mapTileCells[cellX][cellY] = {cellNum : cellNum, cellColor : cellColor};
-      });
-    }
-
+  readMapTile(0, 0, function(mapTile) {
     // Test if newly placed piece created an "encirclement" of cells not belonging to the player.
     // Will look at each side as potential start.  Then traverse.
     // Establish and maintain this invariant:
@@ -281,26 +390,41 @@ var encirclement = function encirclement(placedX, placedY) {
     //   player owning a cell currently determined by color, this will change when we have registration
     //   out-of-bounds beyond current tile -- eventually extend to infinite
 
-    var playerColor = mapTileCells[placedX][placedY].cellColor;
+
+    // TODO check that (x,y) is still playerColor  ... or use the same mapTile everywhere
+    console.log('in encirc(), did rmt(), placed color: ' + playerColor + ' at: ' + placedX + ',' + placedY + ' maptile color: ' + mapTile.colors[placedX][placedY].color);
+
+    if (mapTile.colors[placedX][placedY].color != playerColor) {
+      console.log('GAAH!  == unexpected color at x.y, while running encirclement!  bailing out!!!')
+      serverStatus += 'GAAH!  == unexpected color at x.y, while running encirclement!  bailing out!!!';
+    }
+
     serverStatus += '  Encirc @ (' + placedX + ',' + placedY + ') ';
+    console.log('back from rmt() in encirc(), maptile object, stringified:' + JSON.stringify(mapTile));
+
     var fillList = [];
     ['L', 'U', 'R', 'D'].forEach(function(startingDirection) {
       var left = [placedX, placedY];
       var startingLeft = [placedX, placedY];
       var startingVector = directionToVector(startingDirection);
       var directionVector = directionToVector(startingDirection);
-      if (!outOfBounds(right) && !isMine(right, playerColor, mapTileCells)) {
+      var right = getRightCell(left, directionVector);
+      if (!outOfBounds(right) && !isMine(right, playerColor, mapTile)) {
         serverStatus += '<br>==>' + startingDirection + ': ';
         var backAtStart = false;
         var numRightTurns = 0;
         var numSteps = 0;
         while (!backAtStart) {
           numSteps += 1;
+          if (numSteps > 150) {
+            console.log('Too many steps during encirclement from (' + placedX + ',' + placedY + '): ' + numSteps);
+          }
           // figure out next traversal step based on what is in front of us
           var forwardLeft = getForwardLeftCell(left, directionVector);
           var forwardRight = getForwardRightCell(left, directionVector);
-          if (isMine(forwardLeft, playerColor, mapTileCells)&&
-              isMine(forwardRight, playerColor, mapTileCells)) {
+          process.stdout.write('encirc from: ' + placedX + ',' + placedY + '.  l=[' + left[0] + '][' + left[1] + '],fl=[' + forwardLeft[0] + '][' + forwardLeft[1] + '],fr=[' + forwardRight[0] + '][' + forwardRight[1] + ']');
+          if (isMine(forwardLeft, playerColor, mapTile)&&
+              isMine(forwardRight, playerColor, mapTile)) {
             //
             //  Turn right
             //
@@ -310,8 +434,8 @@ var encirclement = function encirclement(placedX, placedY) {
             left[1] = forwardRight[1];
             numRightTurns += 1;
             //serverStatus += '[[[' + left[0] + ',' + left[1] + '][' + directionVector[0] + ',' + directionVector[1] + ']]]';
-          } else if (!isMine(forwardLeft, playerColor, mapTileCells)&&
-                      isMine(forwardRight, playerColor, mapTileCells)) {
+          } else if (!isMine(forwardLeft, playerColor, mapTile)&&
+                      isMine(forwardRight, playerColor, mapTile)) {
             //
             //  "Diagonal case" -- 
             //     if diagonal connections count -- turn right
@@ -333,7 +457,7 @@ var encirclement = function encirclement(placedX, placedY) {
               numRightTurns -= 1; 
               //serverStatus += '[[[' + left[0] + ',' + left[1] + '][' + directionVector[0] + ',' + directionVector[1] + ']]]';
             }
-          } else if (isMine(forwardLeft, playerColor, mapTileCells)) {
+          } else if (isMine(forwardLeft, playerColor, mapTile)) {
             //
             // Go straight ahead
             //
@@ -372,79 +496,42 @@ var encirclement = function encirclement(placedX, placedY) {
         console.log(serverStatus);
       }
     });
-    fillEnclosures(fillList);
+    // if we encircled anything, fill it
+    if (fillList.length > 0) {
+      fillEnclosures(fillList, mapTile, playerColor);
+    }
   });
 }
 
 // is it ok to place "color" at x,y?
 // if so, do it!
 function move(x, y, pieceColor) {
-  var scanObject = {
-    TableName: config.CROSSCUT_SIMPLE_CELL_COUNTS,
-  }
+  console.log('in move(), color: ' + pieceColor + ' at: ' + x + ',' + y);
+  globalX = x; //DEBUG
+  globalY = y; //DEBUG
 
-  db.scan(scanObject, function(err,data) {
-    if (err) {
-      console.log('Error getting map data: ' + err);
+  readMapTile(0, 0, function(mapTile) {
+    var cellColor = mapTile.colors[x][y].color;
+  
+    if (cellColor == pieceColor) {
+      return;
     } else {
-      //
-      // CHECK IT OUT!
-      // we read the entire 10x10 tile and search for the cell we want, then throw everything else away!
-      // LOL
-      data.Items.forEach(function(item) {
-        var cellNum = item.cellnum.N;
-        var cellColor = item.Color.S;
-        var cellX = (cellNum-1) % tileWidth;
-        var cellY = Math.floor((cellNum-1)/tileHeight);
-        if (cellX==x && cellY==y) {
-          serverStatus += ' at: ' + x + ',' + y + ', cell color: ' + cellColor + ' vs piece color: ' + pieceColor + ' ';
-          if (cellColor != pieceColor) {
-            serverStatus += 'in move  ... placing new piece';
+      mapTile.colors[x][y].color = pieceColor;
+      writeMapTile(0, 0, mapTile.colors, function() {
 
-            var moveData = {
-              TableName: config.CROSSCUT_SIMPLE_CELL_COUNTS,
-              Key: {
-                'cellnum': {'N': cellNum.toString()}
-              },
-              AttributeUpdates: {'ClickCount': {'Value': {'N': '1'},'Action': 'ADD'},
-                                 'Color': {'Value': {'S': pieceColor}, 'Action': 'PUT'}
-                                },
-              ReturnValues: "ALL_NEW"
-            }
 
-            db.updateItem(moveData, function(err, data) {
-              if (err) {
-                console.log('Error adding move to database: ', err);
-              } else {
-                // new piece placed successfully
-                // trigger anything else that needs doing
-                lastUpdateTime = (new Date()).getTime();
-                eventEmitter.emit('piecePlaced', cellX, cellY);
-              }
-            });
-          } else {
-            serverStatus += 'same color, not testing encirclement';
-          }
-        }
+        // new piece placed successfully
+        // trigger anything else that needs doing
+        lastUpdateTime = (new Date()).getTime();
+        eventEmitter.emit('piecePlaced', x, y, pieceColor);
       });
     }
   });
 }
 
 app.post('/getmap', function(req, res) {
-
-  var scanObject = {
-    TableName: config.CROSSCUT_SIMPLE_CELL_COUNTS,
-  }
-
-  db.scan(scanObject, function(err,data) {
-    if (err) {
-      console.log('Error getting map data: ' + err);
-      res.send('scan error getting map');
-    } else {
-      data.Timestamp = lastUpdateTime;
-      res.send(data);
-    }
+  readMapTile(0, 0, function(mapTile) {
+    res.send(mapTile);
   });
 });
 
@@ -453,7 +540,6 @@ app.post('/status', function(req, res) {
 });
 
 app.post('/getupdatetime', function(req, res) {
-  console.log('777777 received getupdatetime POST request');
   res.send('' + lastUpdateTime);
 }); 
 
@@ -476,15 +562,13 @@ app.post('/clicker', function(req, res) {
   var cellY = parseInt(req.body.cellY);
   var color = req.body.color;
 
-  serverStatus = 'cell x, y = ' + cellX + ', ' + cellY + ' clicked';
+  console.log('/clicker request, color: ' + color + ' at: ' + cellX + ',' + cellY);
 
-  var cellNum = tileWidth*(cellY) + cellX + 1;  // should be 1-100
-  var cellString = 'cell'+cellNum;
+  serverStatus = 'cell x, y = ' + cellX + ', ' + cellY + ' clicked';
 
   move(cellX, cellY, color);
 
-
-  res.send("click");
+  res.send('click');
 });
 
 http.createServer(app).listen(app.get('port'), function(){
