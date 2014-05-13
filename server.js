@@ -52,6 +52,10 @@ var serverStatus = 'Server Status';
 var tileWidth = 10;  // x
 var tileHeight = 10; // y
 
+// should agree with client, see .../index.jade
+var emptyCellColor = '#B99F67';
+
+
 // can decide whether diagonal cells are "connected" and thus can encircle
 // NOTE: false case won't work completely if (below) we are only checking encirclement on 4 sides.
 //  for non-diagonal, a new piece could have nbrs on all 4 sides, we've gotta check at diagonals too
@@ -131,6 +135,12 @@ function roughSizeOfObject( object ) {
     return recurse( object );
 }
 
+function isEmpty(object) {
+  for(var i in object) {
+    return true;
+  }
+  return false;
+}
 
 // Following are utilities for encirclement
 function directionToVector(direction) {
@@ -209,6 +219,22 @@ function isMine(position, myColor, mapTile) {
   }
 }
 
+
+function createEmptyMapTile(x, y) {
+  var mapTile = {};
+  var emptyColorArray = createArray(tileWidth, tileHeight);
+  var tileId = 'x' + x + 'y' + y;
+  for (var i=0; i<tileWidth; i++) {
+    for (var j=0; j<tileHeight; j++) {
+      emptyColorArray[i][j] = {"color": emptyCellColor};
+    }
+  }
+  mapTile.id = tileId;
+  mapTile.updateTime = '0';
+  mapTile.colors = emptyColorArray;
+  return mapTile;
+}
+
 // read single tile of map 
 // lower left corner at x,y
 
@@ -223,24 +249,26 @@ function readMapTile(x, y, callback) {
   }
 
   db.getItem(dbGetObject, function(err,data) {
+    var mapTile = {};
     if (err) {
       console.log('Error db.getting map tile: ' + err);
       return;
+    } else if (!('Item' in data)) {
+      console.log('got no tile in rmt() at x,y: ' + x + ',' + y + ', creating an empty one'); // 55555
+      mapTile = createEmptyMapTile(x,y);
     } else {
       // for occasional debugging -- as of v1051 a map tile was "roughly" 7724 bytes
       //                          -- as of v1151 a map tile was "roughly" 4132 bytes (just colors now, dropped x.y)
       // DynamoDB has a max return size of 64k
       //console.log('map tile object size: ' + roughSizeOfObject(data));
 
-      var mapTile = {};
       mapTile.id = data.Item.MapTileId.S;
       mapTile.updateTime = data.Item.UpdateTime.S;
       // TODO  make new column CellContents
       // each cell's contents is an object -- color only now; in future, may contain a bunch of stuff
       mapTile.colors = JSON.parse(data.Item.JsonTile.S);
-      //following is what we expect, and returns what we expects
-      callback(mapTile);
     }
+    callback(mapTile);
   });
 }
 
@@ -492,6 +520,27 @@ function move(x, y, pieceColor) {
 }
 
 app.post('/getmap', function(req, res) {
+  var lowerLeftX = parseInt(req.body.lowerLeftX);
+  var lowerLeftY = parseInt(req.body.lowerLeftY);
+  var topRightX = parseInt(req.body.topRightX);
+  var topRightY = parseInt(req.body.topRightY);
+  console.log('from (' + lowerLeftX + ',' + lowerLeftY + ') to (' + topRightX + ',' + topRightY + ')');
+  serverStatus += 'from (' + lowerLeftX + ',' + lowerLeftY + ') to (' + topRightX + ',' + topRightY + ')';
+
+  var leftmostTileX = Math.floor(lowerLeftX/tileWidth)*tileWidth;
+  var rightmostTileX = Math.floor(topRightX/tileWidth)*tileWidth;
+  var lowestTileY = Math.floor(lowerLeftY/tileHeight)*tileHeight;
+  var topmostTileY = Math.floor(topRightY/tileHeight)*tileHeight;
+
+  for (var tileX = leftmostTileX; tileX <= rightmostTileX; tileX += tileWidth) {
+    for (var tileY = lowestTileY; tileY <= topmostTileY; tileY += tileHeight) {
+      console.log('gotta rmt() tile ' + 'x' + tileX + 'y' + tileY);
+    }
+  }
+
+  // TODO use x1, y1, x2, y2 
+  // convert into list of tiles
+  // read them all , return them as a list
   readMapTile(0, 0, function(mapTile) {
     res.send(mapTile);
   });

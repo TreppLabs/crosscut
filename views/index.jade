@@ -13,7 +13,8 @@ block content
     div(id="signupError", class="alert alert-info", style="display:none")
       p(id="signupErrorText") This alert probably means you're viewing a static webpage, not a dynamic one.  Or maybe we had a server error.
 
-    div(id="mapContainer", style="width:10.5cm;")
+    // TODO:  Gaah!  14.75 width in next line helps align the cells but is fragile!
+    div(id="mapContainer", style="width:14.75cm; min-height=16cm; position=relative")
       p(id="mapContainerText")
       div(id="mapContainerAnchor")
 
@@ -69,7 +70,13 @@ block content
     var c2 = '#9A772C';
     var c3 = '#675B3F';
     var c4 = '#766457';
-    
+
+    // TODO make these client-side settable 
+    var lowerLeftX = -5;
+    var lowerLeftY = -2;
+    var topRightX = 24;
+    var topRightY = 21;
+
     var timeOfLastServerUpdate = 1;  // *server* time -- what server tells us
     var timeOfLastClientUpdate = 0; // also *server* time -- do we need this?  TODO
 
@@ -102,14 +109,17 @@ block content
           });
     });
 
+  // set up divs for map cells
   script.
     $(document).ready(function () {
-      for (var i = tileHeight-1; i >= 0; i--) {
-        for (var j = 0; j < tileWidth; j++) {
+      for (var y = topRightY; y >= lowerLeftY; y--) {
+        for (var x = lowerLeftX; x <= topRightX; x++) {
           var newDiv  = document.createElement('div');
-          $(newDiv).attr('id', 'mx' + j + "my" + i);
+          $(newDiv).attr('id', 'mx' + x + "my" + y);
           $(newDiv).attr('class', 'mapcell');
-          //$(newDiv).text('Z'+i+j);
+          $(newDiv).attr('class', 'mapcell');
+          $(newDiv).attr('height', '3%');  //TODO make this work ... then make this dependent on x-range
+          $(newDiv).attr('width', '3%');   // TODO make this always square!
           $('#mapContainer').append(newDiv);
         }
       }
@@ -161,33 +171,14 @@ block content
               });
     }
 
-  // old way that uses result from readMapTileOld() on server
-  // TODO delete when stuff below is working
-  //script.
-  //  function updateMap() {
-  //      $.post( "/getmap", 'get map',
-  //              function(data) {
-  //                $.each(data.Items, function(index, value){
-  //                  var cell = value.cellnum.N;
-  //                  var cellX = (cell-1) % tileWidth;
-  //                  var cellY = Math.floor((cell-1)/tileHeight);
-  //                  var count = value.ClickCount.N;
-  //                  var mapCellId = "#mx" + cellX + "my" + cellY;
-  //                  var color = value.Color.S;
-  //                  $(mapCellId).html(count);
-  //                  $(mapCellId).css({backgroundColor: color});
-  //                });
-  //                // server passes us the (server) time that the passed data was last updated
-  //                timeOfLastClientUpdate = data.Timestamp;
-  //            });
-  //  }
-
   script.
     function updateMap() {
-        $.post( "/getmap", 'get map',
+     
+        $.post( "/getmap", {"lowerLeftX" : lowerLeftX, "lowerLeftY" : lowerLeftY, "topRightX" : topRightX, "topRightY" : topRightY},
                 function(mapTile) {
-                  //when multiple tiles, mapTile.id looks like x0yo  or x10y20 ... coords of lower left corner
-                  //mapTile.id;
+                  // TODO: handle multiple tiles
+                  // mapTile.id looks like x0yo  or x10y20 ... coords of lower left corner
+                  // mapTile.id;
               
                   for (var x=0; x<tileWidth; x++) {
                     for (var y=0; y<tileHeight; y++) {
