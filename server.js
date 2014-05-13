@@ -19,6 +19,7 @@ var fs = require('fs');
 var AWS = require('aws-sdk');
 var events = require('events');
 var app = express();
+var utils = require('./lib/utils');
 
 app.set('port', process.env.PORT || 3000);
 app.set('views', __dirname + '/views');
@@ -105,32 +106,6 @@ var signup = function (nameSubmitted, emailSubmitted, previewPreference) {
     }
   });
 };
-
-// from http://www.russwurm.com/uncategorized/calculate-memory-size-of-javascript-object/ 
-function roughSizeOfObject( object ) {
-    var objectList = [];
-    var recurse = function( value ) {
-        var bytes = 0;
- 
-        if ( typeof value === 'boolean' ) {
-            bytes = 4;
-        } else if ( typeof value === 'string' ) {
-            bytes = value.length * 2;
-        } else if ( typeof value === 'number' ) {
-            bytes = 8;
-        } else if (typeof value === 'object'
-                 && objectList.indexOf( value ) === -1) {
-            objectList[ objectList.length ] = value;
-            for( i in value ) {
-                bytes+= 8; // assumed existence overhead
-                bytes+= recurse( value[i] )
-            }
-        }
-        return bytes;
-    }
-    return recurse( object );
-}
-
 
 // Following are utilities for encirclement
 function directionToVector(direction) {
@@ -230,7 +205,7 @@ function readMapTile(x, y, callback) {
       // for occasional debugging -- as of v1051 a map tile was "roughly" 7724 bytes
       //                          -- as of v1151 a map tile was "roughly" 4132 bytes (just colors now, dropped x.y)
       // DynamoDB has a max return size of 64k
-      //console.log('map tile object size: ' + roughSizeOfObject(data));
+      //console.log('map tile object size: ' + utils.roughSizeOfObject(data));
 
       var mapTile = {};
       mapTile.id = data.Item.MapTileId.S;
@@ -323,7 +298,7 @@ function fillEnclosures(fillList, mapTile, playerColor) {
 
   // overwrite with new "fill" values on cells
   // then write to DB
-  var updatedColors = createArray(tileWidth, tileHeight);
+  var updatedColors = utils.createArray(tileWidth, tileHeight);
   for (var x=0; x<tileWidth; x++) {
     for (var y=0; y<tileHeight; y++) {
       updatedColors[x][y] = {color: mapTile.colors[x][y].color};
@@ -504,20 +479,6 @@ app.post('/status', function(req, res) {
 app.post('/getupdatetime', function(req, res) {
   res.send('' + lastUpdateTime);
 }); 
-
-// found on StackOverflow -- creates n-dimensional array as specified
-function createArray(dimensions) {
-    var arr = new Array(dimensions || 0),
-        i = dimensions;
-
-    if (arguments.length > 1) {
-        var args = Array.prototype.slice.call(arguments, 1);
-        while(i--) arr[dimensions-1 - i] = createArray.apply(this, args);
-    }
-
-    return arr;
-}
-
 
 app.post('/clicker', function(req, res) {
   var cellX = parseInt(req.body.cellX);
