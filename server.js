@@ -25,7 +25,7 @@ app.set('port', process.env.PORT || 3000);
 app.set('views', __dirname + '/views');
 app.set('view engine', 'jade');
 app.use(express.favicon());
-//app.use(express.logger('dev'));
+app.use(express.logger('dev'));
 app.use(express.bodyParser());
 app.use(express.methodOverride());
 app.use(app.router);
@@ -36,17 +36,17 @@ app.locals.theme = process.env.theme; //Make the THEME environment variable avai
 var config = fs.readFileSync('./app_config.json', 'utf8');
 config = JSON.parse(config);
 
-// Simon's local mode
-function localMode() { return true; }
-var tiles = utils.createArray(10,10); 
-
 //Create DynamoDB client and pass in region.
 var db = new AWS.DynamoDB({region: config.AWS_REGION});
 //Create SNS client and pass in region.
 var sns = new AWS.SNS({ region: config.AWS_REGION});
 
-function initTiles() {  for (var x=0;x<10;x++) {
-    for (var y=0;y<10;y++) {
+// Simon's local mode: switch to false if you don't want it!
+function localMode() { return true; }
+
+var tiles = utils.createArray(tileWidth, tileHeight); 
+function initTiles() {  for (var x=0;x<tileWidth;x++) {
+    for (var y=0;y<tileHeight;y++) {
       tiles[x][y] = {color: "#754"}
     }
   }
