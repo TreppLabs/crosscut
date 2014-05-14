@@ -41,8 +41,19 @@ var db = new AWS.DynamoDB({region: config.AWS_REGION});
 //Create SNS client and pass in region.
 var sns = new AWS.SNS({ region: config.AWS_REGION});
 
-console.log(process.env);
+// Simon's local mode: switch to false if you don't want it!
+function localMode() { return true; }
 
+var tiles = utils.createArray(tileWidth, tileHeight); 
+function initTiles() {  for (var x=0;x<tileWidth;x++) {
+    for (var y=0;y<tileHeight;y++) {
+      tiles[x][y] = {color: "#754"}
+    }
+  }
+}
+
+console.log(process.env);
+initTiles();
 
 // Global Server Variables
 
@@ -192,6 +203,17 @@ function isMine(position, myColor, mapTile) {
 // lower left corner at x,y
 
 function readMapTile(x, y, callback) {
+  if (localMode()) {
+    // NOte: x and y are basically ignored for now. There is only one
+    // tile map 10x10 in size 
+    console.log("Reading tile: " + x + ", " + y);
+    callback({
+      colors: tiles,
+      updateTime: lastUpdateTime
+    });
+    return;
+  }
+
   var dbGetObject = {
     Key:
     {
@@ -232,6 +254,13 @@ function readMapTile(x, y, callback) {
 var writeMapTile = function (x, y, cellContents, callback) {
   var updateTime = (new Date()).getTime();
   lastUpdateTime = updateTime;
+
+  if (localMode()) {
+    console.log("writing tile: " + x + ", " + y + ":> " + JSON.stringify(cellContents));
+    tiles = cellContents;
+    callback();
+    return;
+  }
 
   var mapTileData = {
     TableName: config.CROSSCUT_MAPTILE_TABLE,
