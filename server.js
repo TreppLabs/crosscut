@@ -18,6 +18,8 @@ var path = require('path');
 var fs = require('fs');
 var AWS = require('aws-sdk');
 var events = require('events');
+var async = require('async');    //TODO delete when Q module is working
+var Q = require('q');
 var app = express();
 var utils = require('./lib/utils');
 
@@ -42,7 +44,7 @@ var db = new AWS.DynamoDB({region: config.AWS_REGION});
 var sns = new AWS.SNS({ region: config.AWS_REGION});
 
 // Simon's local mode: switch to false if you don't want it!
-function localMode() { return true; }
+function localMode() { return false; }
 
 var tiles = utils.createArray(tileWidth, tileHeight); 
 function initTiles() {  for (var x=0;x<tileWidth;x++) {
@@ -199,9 +201,77 @@ function isMine(position, myColor, mapTile) {
   }
 }
 
+function createEmptyMapTile(x, y) {
+  var mapTile = {};
+  var emptyColorArray = utils.createArray(tileWidth, tileHeight);
+  var tileId = 'x' + x + 'y' + y;
+  for (var i=0; i<tileWidth; i++) {
+    for (var j=0; j<tileHeight; j++) {
+      emptyColorArray[i][j] = {"color": emptyCellColor};
+    }
+  }
+  mapTile.id = tileId;
+  mapTile.updateTime = '0';
+  mapTile.colors = emptyColorArray;
+  // TODO -- this makes us async so need to change callers
+  //writeMapTile(x, y, mapTile.colors, function(){
+  //  return mapTile;
+  //});
+}
+
+
+// TODO remove Q from name once this works, delete old version, below
+// async tile read -- returns promise so can be called in parallel
+function readMapTileQ(x, y) {
+  var deferred = Q.defer();
+
+  if (localMode()) {
+    // NOte: x and y are basically ignored for now. There is only one
+    // tile map 10x10 in size 
+    console.log("Reading tile: " + x + ", " + y);
+    deferred.resolve({
+      colors: tiles,
+      updateTime: lastUpdateTime
+    });
+    return deferred.promise;
+  }
+
+  var dbGetObject = {
+    Key:
+    {
+      'MapTileId': {'S': 'x' + x + 'y' + y}
+    },
+  
+    TableName: config.CROSSCUT_MAPTILE_TABLE
+  }
+
+  db.getItem(dbGetObject, function(err,data) {
+    var mapTile = {};
+    if (err) {
+      console.log('Error db.getting map tile: ' + err);
+    } else if (!('Item' in data)) {
+      console.log('got no tile in rmt() at x,y: ' + x + ',' + y + ', creating an empty one'); // 55555
+      mapTile = createEmptyMapTile(x,y);
+    } else {
+      // for occasional debugging -- as of v1051 a map tile was "roughly" 7724 bytes
+      //                          -- as of v1151 a map tile was "roughly" 4132 bytes (just colors now, dropped x.y)
+      // DynamoDB has a max return size of 64k
+      //console.log('map tile object size: ' + utils.roughSizeOfObject(data));
+
+      mapTile.id = data.Item.MapTileId.S;
+      mapTile.updateTime = data.Item.UpdateTime.S;
+      // TODO  make new column CellContents
+      // each cell's contents is an object -- color only now; in future, may contain a bunch of stuff
+      mapTile.colors = JSON.parse(data.Item.JsonTile.S);
+    }
+    deferred.resolve(mapTile);
+  });
+  return deferred.promise;
+}
+
 // read single tile of map 
 // lower left corner at x,y
-
+// TODO -- delete this once above readMapTileQ() is working and calls to this have been replaced
 function readMapTile(x, y, callback) {
   if (localMode()) {
     // NOte: x and y are basically ignored for now. There is only one
@@ -227,7 +297,7 @@ function readMapTile(x, y, callback) {
     var mapTile = {};
     if (err) {
       console.log('Error db.getting map tile: ' + err);
-      return;
+      callback(err);
     } else if (!('Item' in data)) {
       console.log('got no tile in rmt() at x,y: ' + x + ',' + y + ', creating an empty one'); // 55555
       mapTile = createEmptyMapTile(x,y);
@@ -481,15 +551,18 @@ var encirclement = function encirclement(placedX, placedY, playerColor) {
 // is it ok to place "color" at x,y?
 // if so, do it!
 function move(x, y, pieceColor) {
+  var lowerLeftX = Math.floor(x/tileWidth)*tileWidth;
+  var lowerLeftY = Math.floor(y/tileHeight)*tileHeight;
 
-  readMapTile(0, 0, function(mapTile) {
+  readMapTile(lowerLeftX, lowerLeftY, function(mapTile) {
+    console.log('just read map tile for: ' + x + ',' + y + ', lower left: ', + lowerLeftX + ',' + lowerLeftY);
     var cellColor = mapTile.colors[x][y].color;
   
     if (cellColor == pieceColor) {
       return;
     } else {
       mapTile.colors[x][y].color = pieceColor;
-      writeMapTile(0, 0, mapTile.colors, function() {
+      writeMapTile(lowerLeftX, lowerLeftY, mapTile.colors, function() {
 
 
         // new piece placed successfully
@@ -501,30 +574,58 @@ function move(x, y, pieceColor) {
   });
 }
 
-app.post('/getmap', function(req, res) {
+
+// each element of tileList is an [x,y] that specifies lower left corner of a maptile
+// read them all and return in a list
+function readMapTiles(tileList, callback) {
+
+  console.log('about to read maptiles, this many: ' + tileList.length);
+
+  var readList = [];
+  for (var i = 0; i<tileList.length; i++) {
+    readList.push(readMapTileQ(tileList[i][0], tileList[i][1]));
+  }
+
+  Q.all(readList).done(function(mapTileList) { 
+    console.log('read this many map tiles in parallel: ' + mapTileList.length);
+    callback(mapTileList);
+  });
+
+}
+
+// return a rectangular region of the map
+// whatever the client asks for
+// internally this is stored as "tiles" -- get all the needed tiles and return them to client
+// client may get more map than it needs -- will have to parse
+app.post('/getmapregion', function(req, res) {
   var lowerLeftX = parseInt(req.body.lowerLeftX);
   var lowerLeftY = parseInt(req.body.lowerLeftY);
   var topRightX = parseInt(req.body.topRightX);
   var topRightY = parseInt(req.body.topRightY);
-  console.log('from (' + lowerLeftX + ',' + lowerLeftY + ') to (' + topRightX + ',' + topRightY + ')');
-  serverStatus += 'from (' + lowerLeftX + ',' + lowerLeftY + ') to (' + topRightX + ',' + topRightY + ')';
-
+  
   var leftmostTileX = Math.floor(lowerLeftX/tileWidth)*tileWidth;
   var rightmostTileX = Math.floor(topRightX/tileWidth)*tileWidth;
   var lowestTileY = Math.floor(lowerLeftY/tileHeight)*tileHeight;
   var topmostTileY = Math.floor(topRightY/tileHeight)*tileHeight;
 
+  var tileList = [];
   for (var tileX = leftmostTileX; tileX <= rightmostTileX; tileX += tileWidth) {
     for (var tileY = lowestTileY; tileY <= topmostTileY; tileY += tileHeight) {
-      console.log('gotta rmt() tile ' + 'x' + tileX + 'y' + tileY);
+      tileList.push([tileX, tileY]);
     }
   }
 
   // TODO use x1, y1, x2, y2 
   // convert into list of tiles
   // read them all , return them as a list
-  readMapTile(0, 0, function(mapTile) {
-    res.send(mapTile);
+
+  readMapTiles(tileList, function(mapTileList) {
+    console.log('...back from RMTS(), sending client This many mapTiles: ' + mapTileList.length);
+    console.log('... data');
+    for (var i = 0; i< mapTileList.length; i++) {
+      console.log('tile: ' + i + ', id: ' + mapTileList[i].id + ', [0][0] color: ' + mapTileList[i].colors[0][0].color);
+    }
+    res.send(mapTileList);
   });
 });
 

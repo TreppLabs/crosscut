@@ -173,23 +173,44 @@ block content
 
   script.
     function updateMap() {
-     
-        $.post( "/getmap", {"lowerLeftX" : lowerLeftX, "lowerLeftY" : lowerLeftY, "topRightX" : topRightX, "topRightY" : topRightY},
-                function(mapTile) {
-                  // TODO: handle multiple tiles
-                  // mapTile.id looks like x0yo  or x10y20 ... coords of lower left corner
-                  // mapTile.id;
-              
-                  for (var x=0; x<tileWidth; x++) {
-                    for (var y=0; y<tileHeight; y++) {
-                      var color = mapTile.colors[x][y].color;
-                      var mapCellId = "#mx" + x + "my" + y;
-                      $(mapCellId).css({backgroundColor: color});
-                    }
-                  }
+        var updateTime = 0;
+        $.post( "/getmapregion", {"lowerLeftX" : lowerLeftX, "lowerLeftY" : lowerLeftY, "topRightX" : topRightX, "topRightY" : topRightY},
+                function(mapTileList) {
+                  console.log('got this many maptiles: ' + mapTileList.length);
 
+                  // mapTile.id looks like x0yo  or x10y20 ... coords of lower left corner
+
+                  for (i = 0; i<mapTileList.length; i++) {
+                    var mapTile = mapTileList[i];
+                    // parse 2 integer values x,y id string that looks like this example: "x-70y30"
+                    // those define lower left of tile in world coords
+                    var tileX = parseInt(mapTile.id.substring(1,mapTile.id.indexOf("y")));
+                    var tileY = parseInt(mapTile.id.substring(mapTile.id.indexOf("y")+1));
+                    if (mapTile.updateTime > updateTime) { 
+                      updateTime = mapTile.updateTime;
+                    }
+                    console.log('Parsing tile LL: ' + tileX + ',' + tileY + ', updateTime: ' + updateTime);
+                    for (var x=0; x<tileWidth; x++) {
+                      for (var y=0; y<tileHeight; y++) {
+                        // only draw if visible on client
+                        var cellX = tileX + x;
+                        var cellY = tileY + y;
+                        if ((cellX >= lowerLeftX) && (cellX <= topRightX) && (cellY >= lowerLeftX) && (cellY <= topRightY)) {
+                          var color = mapTile.colors[x][y].color;
+                          var mapCellId = "#mx" + cellX + "my" + cellY;
+                          $(mapCellId).css({backgroundColor: color});                        
+                        }
+                      }
+                    }
+                  }              
+                  
                   // server passes us the (server) time that the passed data was last updated
-                  timeOfLastClientUpdate = mapTile.updateTime;
+                  // not fully accurate but we'll use the latest over all tiles
+                  console.log('after updating, updateTime was: ' + timeOfLastClientUpdate);
+                  if (updateTime > timeOfLastClientUpdate) {
+                    timeOfLastClientUpdate = updateTime;
+                    console.log('...client update time reset to: ' + updateTime);
+                  } 
               });
     }
 
