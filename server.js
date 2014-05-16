@@ -18,7 +18,6 @@ var path = require('path');
 var fs = require('fs');
 var AWS = require('aws-sdk');
 var events = require('events');
-var async = require('async');    //TODO delete when Q module is working
 var Q = require('q');
 var app = express();
 var utils = require('./lib/utils');

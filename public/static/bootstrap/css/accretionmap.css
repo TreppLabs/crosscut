@@ -4,8 +4,8 @@
 }
 
 .mapcell {
-	height: 0.5cm;
-	width: 0.5cm;
+	height: 10%;
+	width: 10%;
 	background-color: #b0c4de;
 	line-height: 2em;
 	text-align: center;

@@ -13,10 +13,7 @@ block content
     div(id="signupError", class="alert alert-info", style="display:none")
       p(id="signupErrorText") This alert probably means you're viewing a static webpage, not a dynamic one.  Or maybe we had a server error.
 
-    // TODO:  Gaah!  14.75 width in next line helps align the cells but is fragile!
-    div(id="mapContainer", style="width:14.75cm; min-height=16cm; position=relative")
-      p(id="mapContainerText")
-      div(id="mapContainerAnchor")
+    div(id="mapContainer", style="width: 450px; height: 450px; position:relative; overflow: auto; padding: 1em; background: #000; margin: auto")
 
     div(class="jumbotron")
       p
@@ -71,11 +68,11 @@ block content
     var c3 = '#675B3F';
     var c4 = '#766457';
 
-    // TODO make these client-side settable 
-    var lowerLeftX = -5;
-    var lowerLeftY = -2;
-    var topRightX = 24;
-    var topRightY = 21;
+    // TODO make these client-side settable by user
+    var lowerLeftX = 0;
+    var lowerLeftY = 0;
+    var topRightX = 9;
+    var topRightY = 9;
 
     var timeOfLastServerUpdate = 1;  // *server* time -- what server tells us
     var timeOfLastClientUpdate = 0; // also *server* time -- do we need this?  TODO
