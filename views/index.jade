@@ -106,17 +106,28 @@ block content
           });
     });
 
+  // set map size per window
+  script.
+    $(document).ready(function(){
+      var height = $(window).height();
+      $('#mapContainer').css('height', height*0.8);
+      $('#mapContainer').css('width', height*0.8);
+    });
+
   // set up divs for map cells
   script.
     $(document).ready(function () {
       for (var y = topRightY; y >= lowerLeftY; y--) {
         for (var x = lowerLeftX; x <= topRightX; x++) {
+          var xOffset = x*10 + '%';  // TODO not 10!!  use x range!
+          var yOffset = y*10 + '%';  // but not working yet anyway
           var newDiv  = document.createElement('div');
           $(newDiv).attr('id', 'mx' + x + "my" + y);
+          //$(newDiv).html(x + '_' + y);
           $(newDiv).attr('class', 'mapcell');
-          $(newDiv).attr('class', 'mapcell');
-          $(newDiv).attr('height', '3%');  //TODO make this work ... then make this dependent on x-range
-          $(newDiv).attr('width', '3%');   // TODO make this always square!
+          //$(newDiv).attr('left', xOffset);  // TODO this is not working for abs positioning
+          //$(newDiv).attr('bottom', yOffset);
+
           $('#mapContainer').append(newDiv);
         }
       }

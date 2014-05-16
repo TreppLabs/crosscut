@@ -42,19 +42,6 @@ var db = new AWS.DynamoDB({region: config.AWS_REGION});
 //Create SNS client and pass in region.
 var sns = new AWS.SNS({ region: config.AWS_REGION});
 
-// Simon's local mode: switch to false if you don't want it!
-function localMode() { return false; }
-
-var tiles = utils.createArray(tileWidth, tileHeight); 
-function initTiles() {  for (var x=0;x<tileWidth;x++) {
-    for (var y=0;y<tileHeight;y++) {
-      tiles[x][y] = {color: "#754"}
-    }
-  }
-}
-
-console.log(process.env);
-initTiles();
 
 // Global Server Variables
 
@@ -68,6 +55,25 @@ var tileHeight = 10; // y
 // should agree with client, see .../index.jade
 var emptyCellColor = '#B99F67';
 
+// Local mode: 
+//   true:  read/write tiles from (AWS) DB
+//   false: tiles kept in memory, runnable on local machine
+function localMode() { return true; }
+
+var localMapTile = {};
+localMapTile.colors = utils.createArray(tileWidth, tileHeight); 
+function initTile() {
+  localMapTile.id='x0y0';
+  localMapTile.updateTime = 0;
+  for (var x=0;x<tileWidth;x++) {
+    for (var y=0;y<tileHeight;y++) {
+      localMapTile.colors[x][y] = {color: emptyCellColor}
+    }
+  }
+}
+
+console.log(process.env);
+initTile();
 
 // can decide whether diagonal cells are "connected" and thus can encircle
 // NOTE: false case won't work completely if (below) we are only checking encirclement on 4 sides.
@@ -80,7 +86,6 @@ var diagonalsConnected = true;
 //   for now this is "global" for map.  should be on per-tile basis
 //   click on player's own piece is counted as "update" , though only changes click-count
 var lastUpdateTime = (new Date()).getTime();
-serverStatus += ' ' + lastUpdateTime;
 
 //GET home page.
 app.get('/', routes.index);
@@ -97,6 +102,10 @@ app.post('/signup', function(req, res) {
 
 //Add signup form data to database.
 var signup = function (nameSubmitted, emailSubmitted, previewPreference) {
+  if (localMode()) {
+    console.log('signup -- skipping in local mode');
+    return;
+  }
   var formData = {
     TableName: config.STARTUP_SIGNUP_TABLE,
     Item: {
@@ -227,11 +236,7 @@ function readMapTileQ(x, y) {
   if (localMode()) {
     // NOte: x and y are basically ignored for now. There is only one
     // tile map 10x10 in size 
-    console.log("Reading tile: " + x + ", " + y);
-    deferred.resolve({
-      colors: tiles,
-      updateTime: lastUpdateTime
-    });
+    deferred.resolve(localMapTile);
     return deferred.promise;
   }
 
@@ -268,53 +273,6 @@ function readMapTileQ(x, y) {
   return deferred.promise;
 }
 
-// read single tile of map 
-// lower left corner at x,y
-// TODO -- delete this once above readMapTileQ() is working and calls to this have been replaced
-function readMapTile(x, y, callback) {
-  if (localMode()) {
-    // NOte: x and y are basically ignored for now. There is only one
-    // tile map 10x10 in size 
-    console.log("Reading tile: " + x + ", " + y);
-    callback({
-      colors: tiles,
-      updateTime: lastUpdateTime
-    });
-    return;
-  }
-
-  var dbGetObject = {
-    Key:
-    {
-      'MapTileId': {'S': 'x' + x + 'y' + y}
-    },
-  
-    TableName: config.CROSSCUT_MAPTILE_TABLE
-  }
-
-  db.getItem(dbGetObject, function(err,data) {
-    var mapTile = {};
-    if (err) {
-      console.log('Error db.getting map tile: ' + err);
-      callback(err);
-    } else if (!('Item' in data)) {
-      console.log('got no tile in rmt() at x,y: ' + x + ',' + y + ', creating an empty one'); // 55555
-      mapTile = createEmptyMapTile(x,y);
-    } else {
-      // for occasional debugging -- as of v1051 a map tile was "roughly" 7724 bytes
-      //                          -- as of v1151 a map tile was "roughly" 4132 bytes (just colors now, dropped x.y)
-      // DynamoDB has a max return size of 64k
-      //console.log('map tile object size: ' + utils.roughSizeOfObject(data));
-
-      mapTile.id = data.Item.MapTileId.S;
-      mapTile.updateTime = data.Item.UpdateTime.S;
-      // TODO  make new column CellContents
-      // each cell's contents is an object -- color only now; in future, may contain a bunch of stuff
-      mapTile.colors = JSON.parse(data.Item.JsonTile.S);
-    }
-    callback(mapTile);
-  });
-}
 
 // Write single map tile to database.
 // lower left corner at x,y
@@ -325,8 +283,8 @@ var writeMapTile = function (x, y, cellContents, callback) {
   lastUpdateTime = updateTime;
 
   if (localMode()) {
-    console.log("writing tile: " + x + ", " + y + ":> " + JSON.stringify(cellContents));
-    tiles = cellContents;
+    localMapTile.colors = cellContents;
+    localMapTile.updateTime = updateTime;
     callback();
     return;
   }
@@ -433,26 +391,32 @@ eventEmitter.on('piecePlaced', function(x,y, color) {
 // TODO: breakout reading of mapTile into separate fn
 var encirclement = function encirclement(placedX, placedY, playerColor) {
 
-  readMapTile(0, 0, function(mapTile) {
-    // Test if newly placed piece created an "encirclement" of cells not belonging to the player.
-    // Will look at each side as potential start.  Then traverse.
-    // Establish and maintain this invariant:
-    //   We're on an edge between two cells, headed in one direction
-    //   Player owns cell to left, does NOT own cell to right (could be other player, empty, or out-of-bounds)
 
-    // left : [x,y] cell to our left
-    // direction : 'L' or 'U' or 'R' or 'D' representing "absolute" direction we're pointing
-    // directionVector : corresponding unit vector [-1,0] or [0,1] or [1,0] or [0,-1]
-    // startingLeft : cell to our left at "start" of traversal (so we can tell when we've returned)
-    // startingDirection : "absolute" direction of start
-    // numRightTurns : net number of right-hand turns we've made
 
-    // other notes:
-    //   diagonal connections do count for encirclement (for now)
-    //   a single piece could generate two encircled regions (potentially 4 if diagonal connections count)
-    //   player owning a cell currently determined by color, this will change when we have registration
-    //   out-of-bounds beyond current tile -- eventually extend to infinite
+  // Test if newly placed piece created an "encirclement" of cells not belonging to the player.
+  // Will look at each side as potential start.  Then traverse.
+  // Establish and maintain this invariant:
+  //   We're on an edge between two cells, headed in one direction
+  //   Player owns cell to left, does NOT own cell to right (could be other player, empty, or out-of-bounds)
 
+  // left : [x,y] cell to our left
+  // direction : 'L' or 'U' or 'R' or 'D' representing "absolute" direction we're pointing
+  // directionVector : corresponding unit vector [-1,0] or [0,1] or [1,0] or [0,-1]
+  // startingLeft : cell to our left at "start" of traversal (so we can tell when we've returned)
+  // startingDirection : "absolute" direction of start
+  // numRightTurns : net number of right-hand turns we've made
+
+  // other notes:
+  //   diagonal connections do count for encirclement (for now)
+  //   a single piece could generate two encircled regions (potentially 4 if diagonal connections count)
+  //   player owning a cell currently determined by color, this will change when we have registration
+  //   out-of-bounds beyond current tile -- eventually extend to infinite
+
+  var lowerLeftX = Math.floor(placedX/tileWidth)*tileWidth;
+  var lowerLeftY = Math.floor(placedY/tileHeight)*tileHeight;
+
+  readMapTileQ(lowerLeftX, lowerLeftY)
+  .then(function(mapTile){
 
     if (mapTile.colors[placedX][placedY].color != playerColor) {
       console.log('GAAH!  == unexpected color at x.y, while running encirclement!  bailing out!!!');
@@ -544,17 +508,24 @@ var encirclement = function encirclement(placedX, placedY, playerColor) {
     if (fillList.length > 0) {
       fillEnclosures(fillList, mapTile, playerColor);
     }
-  });
+
+  })
+  .fail(function(err) {
+     console.log('error reading map tile: ' + err);
+  })
+  .done();
+
 }
 
 // is it ok to place "color" at x,y?
 // if so, do it!
 function move(x, y, pieceColor) {
+
   var lowerLeftX = Math.floor(x/tileWidth)*tileWidth;
   var lowerLeftY = Math.floor(y/tileHeight)*tileHeight;
 
-  readMapTile(lowerLeftX, lowerLeftY, function(mapTile) {
-    console.log('just read map tile for: ' + x + ',' + y + ', lower left: ', + lowerLeftX + ',' + lowerLeftY);
+  readMapTileQ(lowerLeftX, lowerLeftY)
+  .then(function(mapTile){
     var cellColor = mapTile.colors[x][y].color;
   
     if (cellColor == pieceColor) {
@@ -562,15 +533,17 @@ function move(x, y, pieceColor) {
     } else {
       mapTile.colors[x][y].color = pieceColor;
       writeMapTile(lowerLeftX, lowerLeftY, mapTile.colors, function() {
-
-
         // new piece placed successfully
         // trigger anything else that needs doing
         lastUpdateTime = (new Date()).getTime();
         eventEmitter.emit('piecePlaced', x, y, pieceColor);
       });
     }
-  });
+  })
+  .fail(function(err) {
+     console.log('error reading map tile: ' + err);
+  })
+  .done();
 }
 
 
@@ -578,15 +551,12 @@ function move(x, y, pieceColor) {
 // read them all and return in a list
 function readMapTiles(tileList, callback) {
 
-  console.log('about to read maptiles, this many: ' + tileList.length);
-
   var readList = [];
   for (var i = 0; i<tileList.length; i++) {
     readList.push(readMapTileQ(tileList[i][0], tileList[i][1]));
   }
 
   Q.all(readList).done(function(mapTileList) { 
-    console.log('read this many map tiles in parallel: ' + mapTileList.length);
     callback(mapTileList);
   });
 
@@ -619,11 +589,6 @@ app.post('/getmapregion', function(req, res) {
   // read them all , return them as a list
 
   readMapTiles(tileList, function(mapTileList) {
-    console.log('...back from RMTS(), sending client This many mapTiles: ' + mapTileList.length);
-    console.log('... data');
-    for (var i = 0; i< mapTileList.length; i++) {
-      console.log('tile: ' + i + ', id: ' + mapTileList[i].id + ', [0][0] color: ' + mapTileList[i].colors[0][0].color);
-    }
     res.send(mapTileList);
   });
 });
