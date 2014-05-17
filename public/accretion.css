@@ -1,35 +1,61 @@
+.title {
+	font-size: 3em;
+	text-align: center;
+	color: green;
+	background-color: lightblue;
+}
+.credits {
+	font-size: 1em;
+	text-align: right;
+	background: #22ee33;
+}
+
+.login {
+	background: #22ee33;
+	text-align: right;
+}
+
 .mapContainer {
-	width: 450px; 
-	height: 450px; 
-	position:relative; 
-	overflow: auto; 
-	padding: 1em; 
-	background: #000; 
-	margin: auto;
-	display: none;
+	background-color: black;
+	width: auto;
+	height: auto;
+	margin: 0 auto;
+	min-height: 80%;
+	text-align: center;
 }
 
-.maptable {
-	border-width: 3;
-	border-color: #652712;
+.mapTable
+{
+    display:  table;
+    width:auto;
+    background-color:#eee;
+    border-spacing:0 px;
+    margin: 0px;
+   	padding: 0px;
+   	border: 0px;
 }
 
-.mapcell {
-	height: 10%;
-	width: 10%;
+.mapRow
+{
+   display: table-row;
+   width:auto;
+   border-spacing: 0px
+   margin: 0px;
+   padding: 0px;
+   border: 0px;
+
+}
+
+.mapCell {
+	float:left;
+	height: 45px;
+	width: 45px; 
 	background-color: #b0c4de;
 	line-height: 2em;
 	text-align: center;
 	vertical-align: middle;
-	float: left;
-	padding: 2px;
-	border-radius: 5px
+	display: table-column;
+	padding: 0px;
+	border-radius: 5px;
 }
-
-.dashboard-box {
-	height: 4cm;
-	width: 10cm;
-	background-color: #40c4be;
-}
-
 .mapcell:hover{background-color: #984201;}

@@ -89,32 +89,24 @@ function login() {
 
 function initMap() {
   // clear the map
-  $('#mapContainer').empty();
+  $('#mapTable').empty();
 
-  var height = $(window).height();
-  $('#mapContainer').css('height', height*0.8);
-  $('#mapContainer').css('width', height*0.8);	
+  //var height = $(window).height();
+  //$('#mapContainer').css('height', height*0.8);
+  //$('#mapContainer').css('width', height*0.8);	
 
 // set up divs for map cells
   for (var y = topRightY; y >= lowerLeftY; y--) {
+    var mapRow = $("<div class='mapRow'>");
     for (var x = lowerLeftX; x <= topRightX; x++) {
-    	// FIX THE 10.
-      var xOffset = x*10 + '%';  // TODO not 10!!  use x range!
-      var yOffset = y*10 + '%';  // but not working yet anyway
-      var newDiv  = document.createElement('div');
-      $(newDiv).attr('id', 'mx' + x + "my" + y);
-      //$(newDiv).html(x + '_' + y);
-      $(newDiv).attr('class', 'mapcell');
-      //$(newDiv).attr('left', xOffset);  // TODO this is not working for abs positioning
-      //$(newDiv).attr('bottom', yOffset);
-
-      $('#mapContainer').append(newDiv);
+      var id = 'mx' + x + "my" + y;
+      mapRow.append("<div class='mapCell' id='"+id+"'/>");
     }
- }
+    $("#mapTable").append(mapRow);
+  }
 }
 /*
-
-$("#signup").click(function() {
+div$("#signup").click(function() {
     $.post( "/signup", $("#signupForm").serialize(),
             function(data) {
               $("#signupSuccess").show();
