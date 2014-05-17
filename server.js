@@ -420,7 +420,7 @@ function move(x, y, pieceColor) {
   worldmap.readMapTile(lowerLeftX, lowerLeftY).then(function(mapTile) {
     if (!isCosmicBackgroundRadiation(mapTile.colors[x][y])) {
       console.log("Already a color there. Doh. Can't click");
-      return false;
+      return;
     }
 
     console.log("all good, setting a new color");
@@ -431,7 +431,6 @@ function move(x, y, pieceColor) {
       lastUpdateTime = (new Date()).getTime();
       eventEmitter.emit('piecePlaced', x, y, pieceColor);
     });
-    return true;
   }).fail(function(err) {
      console.log('error1 reading map tile: ' + err);
   }).done();
@@ -499,7 +498,7 @@ app.post('/clicker', function(req, res) {
   var color = req.body.color;
   
   var result = move(cellX, cellY, color);
-  
+  console.log("Result of clicking is: "+result);
   res.send(result);
 });
 

@@ -29,6 +29,8 @@ var topRightY = 9;
 var timeOfLastServerUpdate = 1;  // *server* time -- what server tells us
 var timeOfLastClientUpdate = 0; // also *server* time -- do we need this?  TODO
 
+var POLLING_INTERVAL = 2000;
+
 var loggedIn = false;
 /* not needed. Server setting
 
@@ -136,10 +138,16 @@ function cellClick() {
     var yPos = boxId.indexOf("my");
     var cellX = boxId.substring(xPos+2, yPos);
     var cellY = boxId.substring(yPos+2);
-    $.post( "/clicker", {"cellX" : cellX, "cellY" : cellY, "color" : userColorChoice},
-        function(data) {
-	    }
-	);
+
+    // make the color change immediate if the cell is empty
+    // NOTE: THIS DOESN't WORK. color from css returned as rgb()
+    if ($(this).css("background-color") != emptyCellColor) {
+        $(this).css("background-color", userColorChoice);
+        // Note: we still need to send it the server just in case
+    }
+
+    // When this returns the update from the server will overwrite
+    $.post( "/clicker", {"cellX" : cellX, "cellY" : cellY, "color" : userColorChoice});
 }
 
 // Last change to the whole map. I think this needs to be just the tile
@@ -211,21 +219,6 @@ function startUpdaterPoll(){
       updateMap(); // TODO only update the region you are looking at
       timeOfLastClientUpdate = timeOfLastServerUpdate;
     } 
-    setTimeout(startUpdaterPoll,1000);    
+    setTimeout(startUpdaterPoll, POLLING_INTERVAL);    
   });
 }
-
-// update map when document loads and anytime cell is clicked
-// and start polling
-
-// retrieve status from server
-/*
-$.post("/status", 'Status Request',
-      function(data) {
-          $("#statusMessage").html(data);
-          $("#statusMessage").show();
-      })
-})
-});
-*/
-//updateMap();
