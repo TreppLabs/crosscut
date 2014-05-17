@@ -23,13 +23,13 @@ var app = express();
 var utils = require('./lib/utils');
 
 app.set('port', process.env.PORT || 3000);
-app.set('views', __dirname + '/views');
-app.set('view engine', 'jade');
+// app.set('views', __dirname + '/views');
+// app.set('view engine', 'jade');
 app.use(express.favicon());
 app.use(express.logger('dev'));
 app.use(express.bodyParser());
 app.use(express.methodOverride());
-app.use(app.router);
+//app.use(app.router);
 app.use(express.static(path.join(__dirname, 'public')));
 app.locals.theme = process.env.theme; //Make the THEME environment variable available to the app. 
 
@@ -524,13 +524,17 @@ function move(x, y, pieceColor) {
   var lowerLeftX = Math.floor(x/tileWidth)*tileWidth;
   var lowerLeftY = Math.floor(y/tileHeight)*tileHeight;
 
+  console.log("Click Request (" + x + "," + y + "): " + pieceColor);
+
   readMapTileQ(lowerLeftX, lowerLeftY)
   .then(function(mapTile){
     var cellColor = mapTile.colors[x][y].color;
   
     if (cellColor == pieceColor) {
+      console.log("no color change, doing nothing!");
       return;
     } else {
+      console.log("all good, setting a new color");
       mapTile.colors[x][y].color = pieceColor;
       writeMapTile(lowerLeftX, lowerLeftY, mapTile.colors, function() {
         // new piece placed successfully
@@ -605,9 +609,9 @@ app.post('/clicker', function(req, res) {
   var cellX = parseInt(req.body.cellX);
   var cellY = parseInt(req.body.cellY);
   var color = req.body.color;
-
+  
   move(cellX, cellY, color);
-
+  
   res.send('click');
 });
 
