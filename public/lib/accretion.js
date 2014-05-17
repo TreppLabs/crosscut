@@ -29,6 +29,7 @@ var topRightY = 9;
 var timeOfLastServerUpdate = 1;  // *server* time -- what server tells us
 var timeOfLastClientUpdate = 0; // also *server* time -- do we need this?  TODO
 
+var loggedIn = false;
 /* not needed. Server setting
 
       $('.color-button').css('border', '5px solid transparent')
@@ -61,17 +62,35 @@ var timeOfLastClientUpdate = 0; // also *server* time -- do we need this?  TODO
 
 // set map size per window
 $(document).ready(function(){
-	init();
 	initHandlers();
-	updateLastServerUpdateTime();
-	doUpdaterPoll();
 });
 
 function initHandlers() {
 	$(".mapcell").click(cellClick);
+  $("#login").click(login);
 }
 
-function init() {
+function login() {
+  // select user color
+  var username = $("#username").val();
+  if (username == "jim") {
+    userColorChoice = c1;
+  } else if (username == "simon") {
+    userColorChoice = c2;
+  }  
+
+  $("#mapContainer").show();
+  loggedIn = true;
+  initMap();
+  initHandlers();
+  startUpdaterPoll();
+  updateMap();
+}
+
+function initMap() {
+  // clear the map
+  $('#mapContainer').empty();
+
   var height = $(window).height();
   $('#mapContainer').css('height', height*0.8);
   $('#mapContainer').css('width', height*0.8);	
@@ -191,13 +210,16 @@ function processMapTileList(mapTileList) {
 }
 
 // Periodically check for server side changes
-function doUpdaterPoll(){
+function startUpdaterPoll(){
+  // make sure we are logged in
+  if (!loggedIn) return;
+
   updateLastServerUpdateTime(function() {
     if (timeOfLastServerUpdate > timeOfLastClientUpdate) {
       updateMap(); // TODO only update the region you are looking at
       timeOfLastClientUpdate = timeOfLastServerUpdate;
     } 
-    setTimeout(doUpdaterPoll,1000);    
+    setTimeout(startUpdaterPoll,1000);    
   });
 }
 

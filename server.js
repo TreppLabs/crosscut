@@ -21,6 +21,7 @@ var events = require('events');
 var Q = require('q');
 var app = express();
 var utils = require('./lib/utils');
+var worldmap = require('./lib/worldmap');
 
 app.set('port', process.env.PORT || 3000);
 // app.set('views', __dirname + '/views');
@@ -49,31 +50,21 @@ var sns = new AWS.SNS({ region: config.AWS_REGION});
 var serverStatus = 'Server Status';
 
 // these should agree with client & bot.js definitions, see .../index.jade
-var tileWidth = 10;  // x
-var tileHeight = 10; // y
+config.tileWidth=10;  // x
+config.tileHeight=10;  // y
 
 // should agree with client, see .../index.jade
-var emptyCellColor = '#B99F67';
+config.emptyCellColor = '#B99F67';
 
 // Local mode: 
 //   true:  read/write tiles from (AWS) DB
 //   false: tiles kept in memory, runnable on local machine
-function localMode() { return true; }
+config.localMode=true;
 
-var localMapTile = {};
-localMapTile.colors = utils.createArray(tileWidth, tileHeight); 
-function initTile() {
-  localMapTile.id='x0y0';
-  localMapTile.updateTime = 0;
-  for (var x=0;x<tileWidth;x++) {
-    for (var y=0;y<tileHeight;y++) {
-      localMapTile.colors[x][y] = {color: emptyCellColor}
-    }
-  }
-}
+worldmap.setConfig(config);
+worldmap.initWorld();
 
 console.log(process.env);
-initTile();
 
 // can decide whether diagonal cells are "connected" and thus can encircle
 // NOTE: false case won't work completely if (below) we are only checking encirclement on 4 sides.
@@ -102,7 +93,7 @@ app.post('/signup', function(req, res) {
 
 //Add signup form data to database.
 var signup = function (nameSubmitted, emailSubmitted, previewPreference) {
-  if (localMode()) {
+  if (config.localMode) {
     console.log('signup -- skipping in local mode');
     return;
   }
@@ -179,10 +170,10 @@ function getForwardLeftCell(left, vector) {
 }
 
 function outOfBounds(position) {
-  if (position[0] < 0 || position[0] >= tileWidth) {
+  if (position[0] < 0 || position[0] >= config.tileWidth) {
     return true;
   }
-  if (position[1] < 0 || position[1] >= tileHeight) {
+  if (position[1] < 0 || position[1] >= config.tileHeight) {
     return true;
   } else {
     return false;
@@ -208,103 +199,6 @@ function isMine(position, myColor, mapTile) {
     return false;
   }
 }
-
-function createEmptyMapTile(x, y) {
-  var mapTile = {};
-  var emptyColorArray = utils.createArray(tileWidth, tileHeight);
-  var tileId = 'x' + x + 'y' + y;
-  for (var i=0; i<tileWidth; i++) {
-    for (var j=0; j<tileHeight; j++) {
-      emptyColorArray[i][j] = {"color": emptyCellColor};
-    }
-  }
-  mapTile.id = tileId;
-  mapTile.updateTime = '0';
-  mapTile.colors = emptyColorArray;
-  // TODO -- this makes us async so need to change callers
-  //writeMapTile(x, y, mapTile.colors, function(){
-  //  return mapTile;
-  //});
-}
-
-
-// TODO remove Q from name once this works, delete old version, below
-// async tile read -- returns promise so can be called in parallel
-function readMapTileQ(x, y) {
-  var deferred = Q.defer();
-
-  if (localMode()) {
-    // NOte: x and y are basically ignored for now. There is only one
-    // tile map 10x10 in size 
-    deferred.resolve(localMapTile);
-    return deferred.promise;
-  }
-
-  var dbGetObject = {
-    Key:
-    {
-      'MapTileId': {'S': 'x' + x + 'y' + y}
-    },
-  
-    TableName: config.CROSSCUT_MAPTILE_TABLE
-  }
-
-  db.getItem(dbGetObject, function(err,data) {
-    var mapTile = {};
-    if (err) {
-      console.log('Error db.getting map tile: ' + err);
-    } else if (!('Item' in data)) {
-      console.log('got no tile in rmt() at x,y: ' + x + ',' + y + ', creating an empty one'); // 55555
-      mapTile = createEmptyMapTile(x,y);
-    } else {
-      // for occasional debugging -- as of v1051 a map tile was "roughly" 7724 bytes
-      //                          -- as of v1151 a map tile was "roughly" 4132 bytes (just colors now, dropped x.y)
-      // DynamoDB has a max return size of 64k
-      //console.log('map tile object size: ' + utils.roughSizeOfObject(data));
-
-      mapTile.id = data.Item.MapTileId.S;
-      mapTile.updateTime = data.Item.UpdateTime.S;
-      // TODO  make new column CellContents
-      // each cell's contents is an object -- color only now; in future, may contain a bunch of stuff
-      mapTile.colors = JSON.parse(data.Item.JsonTile.S);
-    }
-    deferred.resolve(mapTile);
-  });
-  return deferred.promise;
-}
-
-
-// Write single map tile to database.
-// lower left corner at x,y
-// TODO: Check if it has been updated since our data was read.  If so, complain but write anyway.
-// TODO: consolidate other writes with this
-var writeMapTile = function (x, y, cellContents, callback) {
-  var updateTime = (new Date()).getTime();
-  lastUpdateTime = updateTime;
-
-  if (localMode()) {
-    localMapTile.colors = cellContents;
-    localMapTile.updateTime = updateTime;
-    callback();
-    return;
-  }
-
-  var mapTileData = {
-    TableName: config.CROSSCUT_MAPTILE_TABLE,
-    Item: {
-      MapTileId: {'S': 'x' + x + 'y' + y}, 
-      UpdateTime: {'S': '' + updateTime},
-      JsonTile: {'S': JSON.stringify(cellContents)}
-    }
-  };
-  db.putItem(mapTileData, function(err, data) {
-    if (err) {
-      console.log('Error adding map tile to database: ', err);
-    } else {
-      callback();
-    }
-  });
-};
 
 function getCellInDirection(x, y, direction) {
   if (direction == 'U') {
@@ -360,9 +254,9 @@ function fillEnclosures(fillList, mapTile, playerColor) {
 
   // overwrite with new "fill" values on cells
   // then write to DB
-  var updatedColors = utils.createArray(tileWidth, tileHeight);
-  for (var x=0; x<tileWidth; x++) {
-    for (var y=0; y<tileHeight; y++) {
+  var updatedColors = utils.createArray(config.tileWidth, config.tileHeight);
+  for (var x=0; x<config.tileWidth; x++) {
+    for (var y=0; y<config.tileHeight; y++) {
       updatedColors[x][y] = {color: mapTile.colors[x][y].color};
     }
   }
@@ -371,7 +265,7 @@ function fillEnclosures(fillList, mapTile, playerColor) {
     var y = cell[1];
     updatedColors[x][y].color = playerColor;
   });
-  writeMapTile(0, 0, updatedColors, function() {
+  worldmap.writeMapTile(0, 0, updatedColors, function() {
   });
 }
 
@@ -388,10 +282,7 @@ eventEmitter.on('piecePlaced', function(x,y, color) {
 // we have encircled.  
 // recursive fill
 // Initial version works in single tile.  Eventual version should read neighboring tiles as needed.
-// TODO: breakout reading of mapTile into separate fn
 var encirclement = function encirclement(placedX, placedY, playerColor) {
-
-
 
   // Test if newly placed piece created an "encirclement" of cells not belonging to the player.
   // Will look at each side as potential start.  Then traverse.
@@ -412,10 +303,10 @@ var encirclement = function encirclement(placedX, placedY, playerColor) {
   //   player owning a cell currently determined by color, this will change when we have registration
   //   out-of-bounds beyond current tile -- eventually extend to infinite
 
-  var lowerLeftX = Math.floor(placedX/tileWidth)*tileWidth;
-  var lowerLeftY = Math.floor(placedY/tileHeight)*tileHeight;
+  var lowerLeftX = Math.floor(placedX/config.tileWidth)*config.tileWidth;
+  var lowerLeftY = Math.floor(placedY/config.tileHeight)*config.tileHeight;
 
-  readMapTileQ(lowerLeftX, lowerLeftY)
+  worldmap.readMapTile(lowerLeftX, lowerLeftY)
   .then(function(mapTile){
 
     if (mapTile.colors[placedX][placedY].color != playerColor) {
@@ -511,7 +402,7 @@ var encirclement = function encirclement(placedX, placedY, playerColor) {
 
   })
   .fail(function(err) {
-     console.log('error reading map tile: ' + err);
+     console.log('error2 reading map tile: ' + err);
   })
   .done();
 
@@ -521,22 +412,20 @@ var encirclement = function encirclement(placedX, placedY, playerColor) {
 // if so, do it!
 function move(x, y, pieceColor) {
 
-  var lowerLeftX = Math.floor(x/tileWidth)*tileWidth;
-  var lowerLeftY = Math.floor(y/tileHeight)*tileHeight;
+  var lowerLeftX = Math.floor(x/config.tileWidth)*config.tileWidth;
+  var lowerLeftY = Math.floor(y/config.tileHeight)*config.tileHeight;
 
-  console.log("Click Request (" + x + "," + y + "): " + pieceColor);
+  console.log("Client click request (" + x + "," + y + "): " + pieceColor);
 
-  readMapTileQ(lowerLeftX, lowerLeftY)
-  .then(function(mapTile){
+  worldmap.readMapTile(lowerLeftX, lowerLeftY).then(function(mapTile){
     var cellColor = mapTile.colors[x][y].color;
-  
     if (cellColor == pieceColor) {
       console.log("no color change, doing nothing!");
       return;
     } else {
       console.log("all good, setting a new color");
       mapTile.colors[x][y].color = pieceColor;
-      writeMapTile(lowerLeftX, lowerLeftY, mapTile.colors, function() {
+      worldmap.writeMapTile(lowerLeftX, lowerLeftY, mapTile.colors, function() {
         // new piece placed successfully
         // trigger anything else that needs doing
         lastUpdateTime = (new Date()).getTime();
@@ -545,7 +434,7 @@ function move(x, y, pieceColor) {
     }
   })
   .fail(function(err) {
-     console.log('error reading map tile: ' + err);
+     console.log('error1 reading map tile: ' + err);
   })
   .done();
 }
@@ -557,7 +446,7 @@ function readMapTiles(tileList, callback) {
 
   var readList = [];
   for (var i = 0; i<tileList.length; i++) {
-    readList.push(readMapTileQ(tileList[i][0], tileList[i][1]));
+    readList.push(worldmap.readMapTile(tileList[i][0], tileList[i][1]));
   }
 
   Q.all(readList).done(function(mapTileList) { 
@@ -576,22 +465,19 @@ app.post('/getmapregion', function(req, res) {
   var topRightX = parseInt(req.body.topRightX);
   var topRightY = parseInt(req.body.topRightY);
   
-  var leftmostTileX = Math.floor(lowerLeftX/tileWidth)*tileWidth;
-  var rightmostTileX = Math.floor(topRightX/tileWidth)*tileWidth;
-  var lowestTileY = Math.floor(lowerLeftY/tileHeight)*tileHeight;
-  var topmostTileY = Math.floor(topRightY/tileHeight)*tileHeight;
+  var leftmostTileX = Math.floor(lowerLeftX/config.tileWidth)*config.tileWidth;
+  var rightmostTileX = Math.floor(topRightX/config.tileWidth)*config.tileWidth;
+  var lowestTileY = Math.floor(lowerLeftY/config.tileHeight)*config.tileHeight;
+  var topmostTileY = Math.floor(topRightY/config.tileHeight)*config.tileHeight;
 
   var tileList = [];
-  for (var tileX = leftmostTileX; tileX <= rightmostTileX; tileX += tileWidth) {
-    for (var tileY = lowestTileY; tileY <= topmostTileY; tileY += tileHeight) {
+  for (var tileX = leftmostTileX; tileX <= rightmostTileX; tileX += config.tileWidth) {
+    for (var tileY = lowestTileY; tileY <= topmostTileY; tileY += config.tileHeight) {
       tileList.push([tileX, tileY]);
     }
   }
 
-  // TODO use x1, y1, x2, y2 
-  // convert into list of tiles
-  // read them all , return them as a list
-
+  
   readMapTiles(tileList, function(mapTileList) {
     res.send(mapTileList);
   });

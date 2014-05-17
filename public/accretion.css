@@ -5,7 +5,8 @@
 	overflow: auto; 
 	padding: 1em; 
 	background: #000; 
-	margin: auto
+	margin: auto;
+	display: none;
 }
 
 .maptable {
