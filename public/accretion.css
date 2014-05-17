@@ -22,6 +22,7 @@
 	margin: 0 auto;
 	min-height: 80%;
 	text-align: center;
+	position: relative;
 }
 
 .mapTable
@@ -39,7 +40,7 @@
 {
    display: table-row;
    width:auto;
-   border-spacing: 0px
+   border-spacing: 0px;
    margin: 0px;
    padding: 0px;
    border: 0px;
@@ -48,8 +49,9 @@
 
 .mapCell {
 	float:left;
-	height: 45px;
-	width: 45px; 
+	position: absolute;
+	height: 7%;
+	width: 7%; 
 	background-color: #b0c4de;
 	line-height: 2em;
 	text-align: center;
@@ -58,4 +60,4 @@
 	padding: 0px;
 	border-radius: 5px;
 }
-.mapcell:hover{background-color: #984201;}
+.mapcell:hover{background-color: #984201; height: 8%; width: 8%}
