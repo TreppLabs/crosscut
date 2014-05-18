@@ -65,6 +65,7 @@ var loggedIn = false;
 // set map size per window
 $(document).ready(function(){
 	initHandlers();
+
 });
 
 function initHandlers() {
@@ -93,16 +94,23 @@ function initMap() {
   // clear the map
   $('#mapTable').empty();
 
-  //var height = $(window).height();
-  //$('#mapContainer').css('height', height*0.8);
-  //$('#mapContainer').css('width', height*0.8);	
+  var height = $(window).height();
+  $('#mapContainer').width(height*0.8); 
+  $('#mapContainer').height(height*0.8); 
 
 // set up divs for map cells
   for (var y = topRightY; y >= lowerLeftY; y--) {
     var mapRow = $("<div class='mapRow'>");
     for (var x = lowerLeftX; x <= topRightX; x++) {
       var id = 'mx' + x + "my" + y;
-      mapRow.append("<div class='mapCell' id='"+id+"'/>");
+      var xOffset = x*10 + '%';
+      var yOffset = y*10 + '%';
+      mapRow.append("<div class='mapCell' id='"+id+"' style='left:"+xOffset+"; bottom:"+yOffset+"'/>");
+      
+      //$('#'+id).css('bottom', yOffset);
+      //$('#'+id).css('left', xOffset);
+      //console.log('can we print css for div?' + $('#'+id).css());
+
     }
     $("#mapTable").append(mapRow);
   }
