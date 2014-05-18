@@ -141,13 +141,20 @@ function cellClick() {
 
     // make the color change immediate if the cell is empty
     // NOTE: THIS DOESN't WORK. color from css returned as rgb()
-    if ($(this).css("background-color") != emptyCellColor) {
-        $(this).css("background-color", userColorChoice);
-        // Note: we still need to send it the server just in case
+    console.log("Color of clicked cell >" + utils.rgb2hex($(this).css("background-color")) + "<");
+    console.log("Color of empty cells >" + emptyCellColor +"<");
+    
+    if (utils.rgb2hex($(this).css("background-color")) != emptyCellColor) {
+        return false;
     }
 
+    console.log("ok to send to server so doing it locally");
+    $(this).css("background-color", userColorChoice);
+
     // When this returns the update from the server will overwrite
+    // TODO: the result of this call should include server updates
     $.post( "/clicker", {"cellX" : cellX, "cellY" : cellY, "color" : userColorChoice});
+    return true;
 }
 
 // Last change to the whole map. I think this needs to be just the tile
