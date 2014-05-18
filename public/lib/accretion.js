@@ -181,6 +181,7 @@ function updateMap() {
 			"topRightX" : topRightX, 
 			"topRightY" : topRightY 
 		}, processMapTileList);
+    console.log("Updated map received");
 }
 
 function processMapTileList(mapTileList) {

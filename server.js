@@ -17,11 +17,11 @@ var http = require('http');
 var path = require('path');
 var fs = require('fs');
 var AWS = require('aws-sdk');
-var events = require('events');
 var Q = require('q');
 var app = express();
 var utils = require('./lib/utils');
 var worldmap = require('./lib/worldmap');
+var bigbang = require(('./lib/bigbang'));
 
 app.set('port', process.env.PORT || 3000);
 // app.set('views', __dirname + '/views');
@@ -63,20 +63,14 @@ config.localMode=true;
 
 worldmap.setConfig(config);
 worldmap.initWorld();
+bigbang.loadWorld();
 
-console.log(process.env);
+// console.log(process.env);
 
 // can decide whether diagonal cells are "connected" and thus can encircle
 // NOTE: false case won't work completely if (below) we are only checking encirclement on 4 sides.
 //  for non-diagonal, a new piece could have nbrs on all 4 sides, we've gotta check at diagonals too
 var diagonalsConnected = true;
-
-// time of last map update
-// Caveats:
-//   for now this is just approximate, should be generated in DB txn 
-//   for now this is "global" for map.  should be on per-tile basis
-//   click on player's own piece is counted as "update" , though only changes click-count
-var lastUpdateTime = (new Date()).getTime();
 
 //GET home page.
 app.get('/', routes.index);
@@ -265,13 +259,14 @@ function fillEnclosures(fillList, mapTile, playerColor) {
     var y = cell[1];
     updatedColors[x][y].color = playerColor;
   });
+  console.log("writing encirclement to the world map");
   worldmap.writeMapTile(0, 0, updatedColors, function() {
   });
 }
 
-
-var eventEmitter = new events.EventEmitter();
-eventEmitter.on('piecePlaced', function(x,y, color) {
+// Listen to changes on the world to calculate an encirclement
+worldmap.worldEmitter.on('piecePlaced', function(x,y, color) {
+  console.log("Checking for encirclement");
   encirclement(x, y, color);
 });
 
@@ -282,7 +277,7 @@ eventEmitter.on('piecePlaced', function(x,y, color) {
 // we have encircled.  
 // recursive fill
 // Initial version works in single tile.  Eventual version should read neighboring tiles as needed.
-var encirclement = function encirclement(placedX, placedY, playerColor) {
+function encirclement(placedX, placedY, playerColor) {
 
   // Test if newly placed piece created an "encirclement" of cells not belonging to the player.
   // Will look at each side as potential start.  Then traverse.
@@ -397,6 +392,7 @@ var encirclement = function encirclement(placedX, placedY, playerColor) {
     });
     // if we encircled anything, fill it
     if (fillList.length > 0) {
+      console.log("Encirclement detected - filling");
       fillEnclosures(fillList, mapTile, playerColor);
     }
 
@@ -408,37 +404,6 @@ var encirclement = function encirclement(placedX, placedY, playerColor) {
 
 }
 
-// is it ok to place "color" at x,y?
-// if so, do it!
-function move(x, y, pieceColor) {
-
-  var lowerLeftX = Math.floor(x/config.tileWidth)*config.tileWidth;
-  var lowerLeftY = Math.floor(y/config.tileHeight)*config.tileHeight;
-
-  console.log("Client click request (" + x + "," + y + "): " + pieceColor);
-
-  worldmap.readMapTile(lowerLeftX, lowerLeftY).then(function(mapTile) {
-    if (!isCosmicBackgroundRadiation(mapTile.colors[x][y])) {
-      console.log("Already a color there. Doh. Can't click");
-      return;
-    }
-
-    console.log("all good, setting a new color");
-    mapTile.colors[x][y].color = pieceColor;
-    worldmap.writeMapTile(lowerLeftX, lowerLeftY, mapTile.colors, function() {
-      // new piece placed successfully
-      // trigger anything else that needs doing
-      lastUpdateTime = (new Date()).getTime();
-      eventEmitter.emit('piecePlaced', x, y, pieceColor);
-    });
-  }).fail(function(err) {
-     console.log('error1 reading map tile: ' + err);
-  }).done();
-}
-
-function isCosmicBackgroundRadiation(cell) {
-  return (cell.color == config.emptyCellColor);
-}
 
 
 // each element of tileList is an [x,y] that specifies lower left corner of a maptile
@@ -489,7 +454,7 @@ app.post('/status', function(req, res) {
 });
 
 app.post('/getupdatetime', function(req, res) {
-  res.send('' + lastUpdateTime);
+  res.send('' + worldmap.lastUpdateTime());
 }); 
 
 app.post('/clicker', function(req, res) {
@@ -497,7 +462,7 @@ app.post('/clicker', function(req, res) {
   var cellY = parseInt(req.body.cellY);
   var color = req.body.color;
   
-  var result = move(cellX, cellY, color);
+  var result = worldmap.move(cellX, cellY, color);
   console.log("Result of clicking is: "+result);
   res.send(result);
 });
