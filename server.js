@@ -417,26 +417,27 @@ function move(x, y, pieceColor) {
 
   console.log("Client click request (" + x + "," + y + "): " + pieceColor);
 
-  worldmap.readMapTile(lowerLeftX, lowerLeftY).then(function(mapTile){
-    var cellColor = mapTile.colors[x][y].color;
-    if (cellColor == pieceColor) {
-      console.log("no color change, doing nothing!");
+  worldmap.readMapTile(lowerLeftX, lowerLeftY).then(function(mapTile) {
+    if (!isCosmicBackgroundRadiation(mapTile.colors[x][y])) {
+      console.log("Already a color there. Doh. Can't click");
       return;
-    } else {
-      console.log("all good, setting a new color");
-      mapTile.colors[x][y].color = pieceColor;
-      worldmap.writeMapTile(lowerLeftX, lowerLeftY, mapTile.colors, function() {
-        // new piece placed successfully
-        // trigger anything else that needs doing
-        lastUpdateTime = (new Date()).getTime();
-        eventEmitter.emit('piecePlaced', x, y, pieceColor);
-      });
     }
-  })
-  .fail(function(err) {
+
+    console.log("all good, setting a new color");
+    mapTile.colors[x][y].color = pieceColor;
+    worldmap.writeMapTile(lowerLeftX, lowerLeftY, mapTile.colors, function() {
+      // new piece placed successfully
+      // trigger anything else that needs doing
+      lastUpdateTime = (new Date()).getTime();
+      eventEmitter.emit('piecePlaced', x, y, pieceColor);
+    });
+  }).fail(function(err) {
      console.log('error1 reading map tile: ' + err);
-  })
-  .done();
+  }).done();
+}
+
+function isCosmicBackgroundRadiation(cell) {
+  return (cell.color == config.emptyCellColor);
 }
 
 
@@ -496,9 +497,9 @@ app.post('/clicker', function(req, res) {
   var cellY = parseInt(req.body.cellY);
   var color = req.body.color;
   
-  move(cellX, cellY, color);
-  
-  res.send('click');
+  var result = move(cellX, cellY, color);
+  console.log("Result of clicking is: "+result);
+  res.send(result);
 });
 
 http.createServer(app).listen(app.get('port'), function(){
