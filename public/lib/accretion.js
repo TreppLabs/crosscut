@@ -85,15 +85,18 @@ function login() {
   $("#mapContainer").show();
   loggedIn = true;
   initMap();
+  resizeMap();
   initHandlers();
   startUpdaterPoll();
   updateMap();
 }
 
-function initMap() {
-  // clear the map
-  $('#mapTable').empty();
+$(window).resize(function() {
+  resizeMap();
+}); 
+ 
 
+function resizeMap() {
   var height = $(window).height();
   var width = $(window).width();
   var usableHeight = height*0.8;
@@ -103,8 +106,6 @@ function initMap() {
   // is map size limited by height or width?
   var heightPerCell = usableHeight / cellsHigh;
   var widthPerCell = usableWidth / cellsWide;
-  console.log('window h, w: ' + height + ',' + width);
-  console.log('window hpc, wpc: ' + heightPerCell + ',' + widthPerCell);
   var mapContainerHeight, mapContainerWidth;
   if (heightPerCell > widthPerCell) {
     // width constrained
@@ -116,24 +117,37 @@ function initMap() {
   }
   $('#mapContainer').width(mapContainerWidth);
   $('#mapContainer').height(mapContainerHeight);
-  
-  console.log('mc h,w' + mapContainerHeight +',' + mapContainerWidth);
+
+  // size divs for map cells
+  for (var y = topRightY; y >= lowerLeftY; y--) {
+    for (var x = lowerLeftX; x <= topRightX; x++) {
+      var cellId = 'mx' + x + "my" + y;
+      // width & height should be equal!
+      var cellWidth = mapContainerWidth / cellsWide;
+      var cellHeight = mapContainerHeight / cellsHigh;
+      var xOffset = x*cellWidth;
+      var yOffset = y*cellHeight;
+      var cellBorder = 0.05 * cellWidth;
+      var cell = $('#'+cellId);
+      cell.height(cellHeight - 2*cellBorder);
+      cell.width(cellWidth - 2*cellBorder);
+      cell.css('left', xOffset + cellBorder);
+      cell.css('bottom', yOffset + cellBorder);
+    }
+  }
+
+}
+
+function initMap() {
+  // clear the map
+  $('#mapTable').empty();
 
   // set up divs for map cells
   for (var y = topRightY; y >= lowerLeftY; y--) {
     var mapRow = $("<div class='mapRow'>");
     for (var x = lowerLeftX; x <= topRightX; x++) {
       var id = 'mx' + x + "my" + y;
-      var cellWidth = mapContainerWidth / cellsWide;
-      var cellHeight = mapContainerHeight / cellsHigh;
-      var xOffset = x*cellWidth;
-      var yOffset = y*cellHeight;
-      mapRow.append("<div class='mapCell' id='"+id+"' style='width:"+cellWidth+"; height: "+cellHeight+"; left:"+xOffset+"; bottom:"+yOffset+"'/>");
-      
-      //$('#'+id).css('bottom', yOffset);
-      //$('#'+id).css('left', xOffset);
-      //console.log('can we print css for div?' + $('#'+id).css());
-
+      mapRow.append("<div class='mapCell' id='"+id+"'/>");
     }
     $("#mapTable").append(mapRow);
   }
