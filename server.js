@@ -139,6 +139,11 @@ app.post('/getmapregion', function(req, res) {
   }
 
   worldmap.readMapTiles(tileList, function(mapTileList) {
+    // client doesn't know mapTile size, so we'll tell it in each tile we send
+    for (var i = 0; i<mapTileList.length; i++) {
+      mapTileList[i].tileWidth = config.tileWidth;
+      mapTileList[i].tileHeight = config.tileHeight;
+    }
     res.send(mapTileList);
   });
 });

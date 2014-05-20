@@ -1,12 +1,6 @@
 // accretion.js
 
 // the following should agree with values in server.js
-
-
-// login settings
-var tileWidth  = 10;
-var tileHeight = 10;
-
 var emptyCellColor = '#B99F67'
 
 
@@ -21,10 +15,10 @@ var c4 = '#766457';
 var userColorChoice = c2;
 
 // TODO make these client-side settable by user
-var lowerLeftX = 0;
-var lowerLeftY = 0;
-var topRightX = 35;
-var topRightY = 22;
+var lowerLeftX = 5;
+var lowerLeftY = 5;
+var topRightX = 25;
+var topRightY = 18;
 
 var timeOfLastServerUpdate = 1;  // *server* time -- what server tells us
 var timeOfLastClientUpdate = 0; // also *server* time -- do we need this?  TODO
@@ -126,12 +120,13 @@ function resizeMap() {
   var cellWidth = mapContainerWidth / cellsWide;
   var cellHeight = mapContainerHeight / cellsHigh;
   var cellBorder = 0.05 * cellWidth;
+  $('.mapCell').css('border-radius', cellWidth*0.1);
   for (var y = topRightY; y >= lowerLeftY; y--) {
     for (var x = lowerLeftX; x <= topRightX; x++) {
       var cellId = 'mx' + x + "my" + y;
       var cell = $('#'+cellId);
-      var xOffset = x*cellWidth;
-      var yOffset = y*cellHeight;
+      var xOffset = (x-lowerLeftX)*cellWidth;
+      var yOffset = (y-lowerLeftY)*cellHeight;
       cell.height(cellHeight - 2*cellBorder);
       cell.width(cellWidth - 2*cellBorder);
       cell.css('left', xOffset + cellBorder);
@@ -225,7 +220,6 @@ function updateMap() {
 }
 
 function processMapTileList(mapTileList) {
-	console.log('got this many maptiles: ' + mapTileList.length);
       var updateTime = 0;
 
 
@@ -238,10 +232,13 @@ function processMapTileList(mapTileList) {
 	    var tileX = parseInt(mapTile.id.substring(1,mapTile.id.indexOf("y")));
 	    var tileY = parseInt(mapTile.id.substring(mapTile.id.indexOf("y")+1));
 
+      // unlike server, client doesn't know tile size, so server tells us
+      var tileWidth = parseInt(mapTile.tileWidth);
+      var tileHeight = parseInt(mapTile.tileHeight);
+
 	    if (mapTile.updateTime > updateTime) { 
 	    	updateTime = mapTile.updateTime;
 	    }
-	    console.log('Parsing tile LL: ' + tileX + ',' + tileY + ', updateTime: ' + updateTime);
 	    for (var x=0; x<tileWidth; x++) {
 			for (var y=0; y<tileHeight; y++) {
 				// only draw if visible on client
