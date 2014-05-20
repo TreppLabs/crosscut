@@ -23,8 +23,8 @@ var userColorChoice = c2;
 // TODO make these client-side settable by user
 var lowerLeftX = 0;
 var lowerLeftY = 0;
-var topRightX = 9;
-var topRightY = 9;
+var topRightX = 35;
+var topRightY = 22;
 
 var timeOfLastServerUpdate = 1;  // *server* time -- what server tells us
 var timeOfLastClientUpdate = 0; // also *server* time -- do we need this?  TODO
@@ -103,6 +103,7 @@ function resizeMap() {
   var usableWidth = width*0.95;
   var cellsHigh=topRightY-lowerLeftY+1;
   var cellsWide=topRightX-lowerLeftX+1;
+
   // is map size limited by height or width?
   var heightPerCell = usableHeight / cellsHigh;
   var widthPerCell = usableWidth / cellsWide;
@@ -112,23 +113,25 @@ function resizeMap() {
     mapContainerWidth = usableWidth;
     mapContainerHeight = usableWidth*(cellsHigh/cellsWide);
   } else {
+    // height constrained
     mapContainerHeight = usableHeight;
     mapContainerWidth = usableHeight*(cellsWide/cellsHigh);
   }
   $('#mapContainer').width(mapContainerWidth);
   $('#mapContainer').height(mapContainerHeight);
 
+
   // size divs for map cells
+  // width & height should be equal!
+  var cellWidth = mapContainerWidth / cellsWide;
+  var cellHeight = mapContainerHeight / cellsHigh;
+  var cellBorder = 0.05 * cellWidth;
   for (var y = topRightY; y >= lowerLeftY; y--) {
     for (var x = lowerLeftX; x <= topRightX; x++) {
       var cellId = 'mx' + x + "my" + y;
-      // width & height should be equal!
-      var cellWidth = mapContainerWidth / cellsWide;
-      var cellHeight = mapContainerHeight / cellsHigh;
+      var cell = $('#'+cellId);
       var xOffset = x*cellWidth;
       var yOffset = y*cellHeight;
-      var cellBorder = 0.05 * cellWidth;
-      var cell = $('#'+cellId);
       cell.height(cellHeight - 2*cellBorder);
       cell.width(cellWidth - 2*cellBorder);
       cell.css('left', xOffset + cellBorder);
