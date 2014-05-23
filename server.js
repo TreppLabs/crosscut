@@ -66,7 +66,6 @@ config.localMode=true;
 config.diagonalsConnected = true;
 
 worldmap.setConfig(config);
-worldmap.initWorld();
 bigbang.loadWorld();
 
 // console.log(process.env);
