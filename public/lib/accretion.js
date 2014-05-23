@@ -65,6 +65,50 @@ $(document).ready(function(){
 function initHandlers() {
 	$(".mapcell").click(cellClick);
   $("#login").click(login);
+  $("#xButton").click(updateLowX);
+  $("#yButton").click(updateLowY);
+  $("#cellsWideButton").click(updateCellsWide);
+  $("#cellsHighButton").click(updateCellsHigh);
+}
+
+function updateLowX() {
+  console.log('llx was: ' + lowerLeftX);
+  lowerLeftX = parseInt($("#xInput").val());
+  console.log('llx is: ' + lowerLeftX);
+  initMap();
+  resizeMap();
+  initHandlers();
+  updateMap();
+}
+
+function updateLowY() {
+  console.log('lly was: ' + lowerLeftY);
+  lowerLeftY = parseInt($("#yInput").val());
+  console.log('lly was: ' + lowerLeftY);
+  initMap();
+  resizeMap();
+  initHandlers();
+  updateMap();
+}
+
+function updateCellsWide() {
+  console.log('trx was: ' + topRightX);
+  topRightX = lowerLeftX - 1 + parseInt($("#cellsWideInput").val());
+  console.log('trx is: ' + topRightX);
+  initMap();
+  resizeMap();
+  initHandlers();
+  updateMap();
+}
+
+function updateCellsHigh() {
+  console.log('try was: ' + topRightY);
+  topRightY = lowerLeftY - 1 + parseInt($("#cellsHighInput").val());
+  console.log('try was: ' + topRightY);
+  initMap();
+  resizeMap();
+  initHandlers();
+  updateMap();
 }
 
 function login() {
@@ -81,7 +125,7 @@ function login() {
   initMap();
   resizeMap();
   initHandlers();
-  startUpdaterPoll();
+  startUpdaterPoll(); // TODO: this can create multiple polls -- one per login in browser window
   updateMap();
 }
 
@@ -89,7 +133,7 @@ $(window).resize(function() {
   resizeMap();
 }); 
  
-
+// given the DOM structure of the map, make it fit nicely into container
 function resizeMap() {
   var height = $(window).height();
   var width = $(window).width();
@@ -136,9 +180,13 @@ function resizeMap() {
 
 }
 
+
+// create DOM structure for map of given # cells
 function initMap() {
   // clear the map
   $('#mapTable').empty();
+
+  console.log('init-ing map: llx,y= ' + lowerLeftX + ',' + lowerLeftY);
 
   // set up divs for map cells
   for (var y = topRightY; y >= lowerLeftY; y--) {
