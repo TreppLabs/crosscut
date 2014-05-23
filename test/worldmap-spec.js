@@ -12,8 +12,10 @@ describe("worldmap", function() {
 	it("same cell twice", function() {
 		var move1 = worldmap.move(0,0,"#red");
 		var move2 = worldmap.move(0,0,"#blue");
+		expect(move2).toBe(false);
+		
 		var cell = worldmap.getCell(0,0);
 		expect(cell.color).toBe("#red");
-		expect(move2).toBe(false);
+		
 	});
 });
