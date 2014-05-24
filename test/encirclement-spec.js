@@ -14,5 +14,13 @@ describe("encirclement", function() {
 		expect(worldmap.getCell(1,1).color).toBe("#red");
 	});
 	// encircle across tile boundaries
+	it("encircle 0,0 across 3 tiles", function() {
+		expect(worldmap.getCell(0,0).color).not.toBe("#red");
+		worldmap.move(0,1,"#red");
+		worldmap.move(1,0,"#red");
+		worldmap.move(-1,0,"#red");
+		worldmap.move(0,-1,"#red");
+		expect(worldmap.getCell(0,0).color).toBe("#red");
+	});
 	// encircle someone elses tile
 });
