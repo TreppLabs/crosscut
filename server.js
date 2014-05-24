@@ -12,7 +12,7 @@
 
 //Get modules.
 var express = require('express');
-var routes = require('./routes');
+//var routes = require('./routes');
 var http = require('http');
 var path = require('path');
 var AWS = require('aws-sdk');
@@ -71,7 +71,7 @@ bigbang.loadWorld();
 // console.log(process.env);
 
 //GET home page.
-app.get('/', routes.index);
+//app.get('/', routes.index);
 
 //POST signup form.
 app.post('/signup', function(req, res) {
