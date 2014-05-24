@@ -23,4 +23,13 @@ describe("encirclement", function() {
 		expect(worldmap.getCell(0,0).color).toBe("#red");
 	});
 	// encircle someone elses tile
+	it("encircle someone elses tile and change it to yours", function() {
+		worldmap.move(0,0,"#pink");
+		expect(worldmap.getCell(0,0).color).toBe("#pink");
+		worldmap.move(0,1,"#red");
+		worldmap.move(1,0,"#red");
+		worldmap.move(-1,0,"#red");
+		worldmap.move(0,-1,"#red");
+		expect(worldmap.getCell(0,0).color).toBe("#red");
+	});
 });
