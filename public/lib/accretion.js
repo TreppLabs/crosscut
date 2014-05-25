@@ -3,9 +3,6 @@
 // the following should agree with values in server.js
 var emptyCellColor = '#B99F67'
 
-
-////////
-
 /// move to server
 var c1 = '#78856D';
 var c2 = '#9A772C';
@@ -14,7 +11,7 @@ var c4 = '#766457';
 
 var userColorChoice = c2;
 
-// TODO make these client-side settable by user
+// viewport settings
 var lowerLeftX = 5;
 var lowerLeftY = 5;
 var topRightX = 25;
@@ -26,42 +23,10 @@ var timeOfLastClientUpdate = 0; // also *server* time -- do we need this?  TODO
 var POLLING_INTERVAL = 2000;
 
 var loggedIn = false;
-/* not needed. Server setting
-
-      $('.color-button').css('border', '5px solid transparent')
-      $('#color1').css('background-color', c1);
-      $('#color2').css('background-color', c2);
-      $('#color3').css('background-color', c3);
-      $('#color4').css('background-color', c4);
-      $('#color1').click(function() {
-        userColorChoice = c1;
-        $('.color-button').css('border', '5px solid transparent')
-        $('#color1').css('border', 'solid 5px black');
-      });
-      $('#color2').click(function() {
-        userColorChoice = c2;
-        $('.color-button').css('border', '5px solid transparent')
-        $('#color2').css('border', 'solid 5px black');
-      });
-      $('#color3').click(function() {
-        userColorChoice = c3;
-        $('.color-button').css('border', '5px solid transparent')
-        $('#color3').css('border', 'solid 5px black');
-      });
-      $('#color4').click(function() {
-        userColorChoice = c4;
-        $('.color-button').css('border', '5px solid transparent')
-        $('#color4').css('border', 'solid 5px black');
-      });
-});
-*/
 
 // set map size per window
 $(document).ready(function(){
 	initHandlers();
-  if (window.location.hash == "gondwanaland") {
-
-  }
 });
 
 function initHandlers() {
@@ -122,6 +87,7 @@ function login() {
     userColorChoice = c2;
   }  
 
+  // TEST: trying out a canvas mddel called gondwanaland
   if (window.location.hash == "#gondwanaland") {
     $("#gondwanaland").show();
     $("#mapTable").hide();
@@ -129,6 +95,7 @@ function login() {
     $("#mapTable").show();
     $("#dondwanaland").hide();
   }
+
   loggedIn = true;
   initMap();
   resizeMap();

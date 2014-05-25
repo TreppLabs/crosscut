@@ -24,14 +24,14 @@ var gondwanaland = (function() {
 	var cWidth = canvas.width;
 
 	// where we are looking (units are accretions coords)
-	var vx = 10;
-	var vy = 10;
+	var vx = 50;
+	var vy = 50;
 
 	// how much in or out are we looking (discrete levels only)
 	var zoom ; // 1-5 - bigger the zoom level the less you see
 
-	setZoom(1);
-	
+	init();
+
 	var me = {};
 
 	// how big to draw a cell?
@@ -45,6 +45,11 @@ var gondwanaland = (function() {
 		// how big to draw a cell?
 		cellWidth = CELL_W * zoom;
 		cellHeight = CELL_H * zoom;
+	}
+
+	function init() {
+		resize();
+		setZoom(1);
 	}
 
 	// x,y cell coords that should be in the middle of our screen
@@ -63,17 +68,12 @@ var gondwanaland = (function() {
 	// Maybe only draw the whole then when we move. Otherwise its spot changes only
 	// Unless this is cheap enough.
 	function draw() {
-
-
 		// how many cells fit on the page?
 		var cellsX = cWidth/cellWidth;
 		var cellsY = cHeight/cellHeight;
 
-		var topLeftCellX = vx - Math.floor(cellsX/2);
-		var topLeftCellY = vy + Math.floor(cellsY/2);
-
-		ctx.clearRect(0,0,canvas.width, canvas.height);
-		ctx.strokeStyle = "#22ff33";
+		ctx.clearRect(0,0,cWidth, cHeight);
+		ctx.strokeStyle = "#22ff33"; // the matrix style colors for cool effect. Or not.
      
 		for (var a = 0; a < cellsX; a++) {
 			for (var b = 0; b < cellsY; b++) {
@@ -94,10 +94,10 @@ var gondwanaland = (function() {
 		var cxy = tileXYFromGXY(x,y);
 
 		if (!tile) { 
-			ctx.strokeRect(a*cellWidth, b*cellHeight, cellWidth, cellHeight);
+			ctx.strokeRect(a*cellWidth, cHeight - b*cellHeight, cellWidth, cellHeight);
 		} else {
 			ctx.fillStyle = tile.colors[cxy.x][cxy.y].color;
-			ctx.fillRect(a*cellWidth+1, b*cellHeight+1, cellWidth-1, cellHeight-1);
+			ctx.fillRect(a*cellWidth+1, cHeight-b*cellHeight+1, cellWidth-1, cellHeight-1);
 		}					
 	}
 
@@ -119,18 +119,18 @@ var gondwanaland = (function() {
 		switch(e.keyCode)
 		{
 			case 37: // left arrow
-				move(vx -1, vy);
+				move(vx + 1, vy);
 				break;
 			case 38: // up arrow
 				move(vx, vy-1);
 				break;
 			case 39: // right arrow
-				move(vx + 1, vy);
+				move(vx - 1, vy);
 				break;
 			case 40: // down arrow
 				move(vx, vy+1);
 				break;
-			case 90: // zoom
+			case 90: // z - zoom
 				setZoom((zoom+1)%5);
 				move(vx, vy);
 				break;
@@ -158,6 +158,16 @@ var gondwanaland = (function() {
 		}
 	}, false);
 
+	$(window).resize(function() {
+		resize();
+	});
+
+	function resize() {
+		cHeight = canvas.height = $("#mapContainer").height();
+  		cWidth = canvas.width =  $("#mapContainer").width();
+  		draw();
+	} 
+ 
 	me.move = move;
 
 	return me;
