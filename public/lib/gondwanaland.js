@@ -28,12 +28,23 @@ var gondwanaland = (function() {
 	var vy = 10;
 
 	// how much in or out are we looking (discrete levels only)
-	var zoom = 1; // 1-5 - bigger the zoom level the less you see
+	var zoom ; // 1-5 - bigger the zoom level the less you see
 
+	setZoom(1);
+	
 	var me = {};
 
+	// how big to draw a cell?
+	var cellWidth;
+	var cellHeight;
+
 	function setZoom(level) {
+		if (level==0) level = 1;
 		zoom = level;
+
+		// how big to draw a cell?
+		cellWidth = CELL_W * zoom;
+		cellHeight = CELL_H * zoom;
 	}
 
 	// x,y cell coords that should be in the middle of our screen
@@ -53,9 +64,6 @@ var gondwanaland = (function() {
 	// Unless this is cheap enough.
 	function draw() {
 
-		// how big to draw a cell?
-		var cellWidth = CELL_W * zoom;
-		var cellHeight = CELL_H * zoom;
 
 		// how many cells fit on the page?
 		var cellsX = cWidth/cellWidth;
@@ -73,21 +81,25 @@ var gondwanaland = (function() {
 				gx = a + vx;
 				gy = b + vy;
 
-				// get the tile
-				var tile = tiles[tileIdFromXY(gx,gy)];
-
-				// get the local tile coords
-				var cxy = tileXYFromGXY(gx,gy);
-
-				if (!tile) { 
-					ctx.strokeRect(a*cellWidth, b*cellHeight, cellWidth, cellHeight);
-				} else {
-					ctx.fillStyle = tile.colors[cxy.x][cxy.y].color;
-					ctx.fillRect(a*cellWidth, b*cellHeight, cellWidth, cellHeight);
-				}					
+				drawCell(a,b,gx,gy);
 			}
 		}
 	}	
+
+	function drawCell(a,b,x,y) {
+		// get the tile
+		var tile = tiles[tileIdFromXY(x,y)];
+
+		// get the local tile coords
+		var cxy = tileXYFromGXY(x,y);
+
+		if (!tile) { 
+			ctx.strokeRect(a*cellWidth, b*cellHeight, cellWidth, cellHeight);
+		} else {
+			ctx.fillStyle = tile.colors[cxy.x][cxy.y].color;
+			ctx.fillRect(a*cellWidth+1, b*cellHeight+1, cellWidth-1, cellHeight-1);
+		}					
+	}
 
 	// stolen from the server. Find a way to reuse
 	function tileXYFromGXY(gx, gy) {
