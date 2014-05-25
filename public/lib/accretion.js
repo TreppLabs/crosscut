@@ -59,7 +59,9 @@ var loggedIn = false;
 // set map size per window
 $(document).ready(function(){
 	initHandlers();
+  if (window.location.hash == "gondwanaland") {
 
+  }
 });
 
 function initHandlers() {
@@ -120,7 +122,13 @@ function login() {
     userColorChoice = c2;
   }  
 
-  $("#mapContainer").show();
+  if (window.location.hash == "#gondwanaland") {
+    $("#gondwanaland").show();
+    $("#mapTable").hide();
+  } else {
+    $("#mapTable").show();
+    $("#dondwanaland").hide();
+  }
   loggedIn = true;
   initMap();
   resizeMap();
@@ -267,14 +275,16 @@ function updateMap() {
     console.log("Updated map received");
 }
 
+var tiles = {};
 function processMapTileList(mapTileList) {
       var updateTime = 0;
 
-
+      tiles = {};
   	// mapTile.id looks like x0yo  or x10y20 ... coords of lower left corner
 
   	for (i = 0; i<mapTileList.length; i++) {
 	    var mapTile = mapTileList[i];
+      tiles[mapTile.id] = mapTile; // for gondwanaland to access
 	    // parse 2 integer values x,y id string that looks like this example: "x-70y30"
 	    // those define lower left of tile in world coords
 	    var tileX = parseInt(mapTile.id.substring(1,mapTile.id.indexOf("y")));
@@ -308,6 +318,8 @@ function processMapTileList(mapTileList) {
     timeOfLastClientUpdate = updateTime;
     console.log('...client update time reset to: ' + updateTime);
   }
+
+  gondwanaland.move(10,10);
 }
 
 // Periodically check for server side changes

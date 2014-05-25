@@ -15,6 +15,10 @@
 	text-align: right;
 }
 
+#gondwanaland { 
+	display: none;
+}
+
 .mapContainer {
 	background-color: black;
 	width: auto;
@@ -34,6 +38,7 @@
     margin: 0px;
    	padding: 0px;
    	border: 0px;
+	display: none;
 }
 
 .mapRow
