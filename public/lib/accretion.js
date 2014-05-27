@@ -270,7 +270,7 @@ function processMapTileList(mapTileList) {
 				var cellX = tileX + x;
 				var cellY = tileY + y;
 				if ((cellX >= lowerLeftX) && (cellX <= topRightX) && (cellY >= lowerLeftX) && (cellY <= topRightY)) {
-				  var color = mapTile.colors[x][y].color;
+				  var color = mapTile.cells[x][y].color;
 				  var mapCellId = "#mx" + cellX + "my" + cellY;
 				  $(mapCellId).css({backgroundColor: color});                        
 			    }

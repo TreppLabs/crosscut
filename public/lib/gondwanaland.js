@@ -96,7 +96,7 @@ var gondwanaland = (function() {
 		if (!tile) { 
 			ctx.strokeRect(a*cellWidth, cHeight - b*cellHeight, cellWidth, cellHeight);
 		} else {
-			ctx.fillStyle = tile.colors[cxy.x][cxy.y].color;
+			ctx.fillStyle = tile.cells[cxy.x][cxy.y].color;
 			ctx.fillRect(a*cellWidth+1, cHeight-b*cellHeight+1, cellWidth-1, cellHeight-1);
 		}					
 	}
