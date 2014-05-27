@@ -110,6 +110,8 @@ $(window).resize(function() {
  
 // given the DOM structure of the map, make it fit nicely into container
 function resizeMap() {
+  if (window.location.hash == "#gondwanaland") return;
+  
   var height = $(window).height();
   var width = $(window).width();
   var usableHeight = height*0.8;
@@ -173,30 +175,6 @@ function initMap() {
     $("#mapTable").append(mapRow);
   }
 }
-/*
-div$("#signup").click(function() {
-    $.post( "/signup", $("#signupForm").serialize(),
-            function(data) {
-              $("#signupSuccess").show();
-            }
-          )
-          .error(function(xhr) {
-            switch(xhr.status) {
-              case 409:
-                $("#signupDuplicate").show();
-                break;
-              default:
-                $("#signupError").show();
-            }
-          })
-          .always(function() {
-            $("#signupModal").modal('hide');
-          });
-  })
-})
-*/
-
-
 
 function cellClick() {
     var boxId = $(this).attr('id');
@@ -265,6 +243,7 @@ function processMapTileList(mapTileList) {
 	    	updateTime = mapTile.updateTime;
 	    }
 	    for (var x=0; x<tileWidth; x++) {
+<<<<<<< HEAD
 			for (var y=0; y<tileHeight; y++) {
 				// only draw if visible on client
 				var cellX = tileX + x;
@@ -275,6 +254,18 @@ function processMapTileList(mapTileList) {
 				  $(mapCellId).css({backgroundColor: color});                        
 			    }
 			}
+=======
+  			for (var y=0; y<tileHeight; y++) {
+  				// only draw if visible on client
+  				var cellX = tileX + x;
+  				var cellY = tileY + y;
+  				if ((cellX >= lowerLeftX) && (cellX <= topRightX) && (cellY >= lowerLeftX) && (cellY <= topRightY)) {
+  				  var color = mapTile.colors[x][y].color;
+  				  var mapCellId = "#mx" + cellX + "my" + cellY;
+  				  $(mapCellId).css({backgroundColor: color});                        
+  			    }
+  			}
+>>>>>>> 7676d64c6e9a3605c5e7d0d982a1bfbffd470e87
     	}
   	}              
   

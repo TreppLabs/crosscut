@@ -1,4 +1,4 @@
-/* gondwanaland
+/* Welcome to Gondwanaland.
  *
  * The model here is to step thru every visible block in gondwanaland (on the canvas)
  * and find in memory its corresponding cell. If its there, the color is used. If its
@@ -9,13 +9,16 @@
  * start bottom left.
  */
 
-// need to change this!
+"use strict";
+
+// need to change this dynamicall!?
 var tileWidth = 10;
 var tileHeight = 10;
 
 var CELL_W = 12; // px
 var CELL_H = 10;
 
+var MAX_ZOOM = 10;
 var gondwanaland = (function() {
 	var canvas = $("#gondwanaland")[0];
 	var ctx = canvas.getContext("2d");
@@ -23,14 +26,12 @@ var gondwanaland = (function() {
 	var cHeight = canvas.height;
 	var cWidth = canvas.width;
 
-	// where we are looking (units are accretions coords)
+	// where we are currently looking (units are accretions coords)
 	var vx = 50;
 	var vy = 50;
 
 	// how much in or out are we looking (discrete levels only)
 	var zoom ; // 1-5 - bigger the zoom level the less you see
-
-	init();
 
 	var me = {};
 
@@ -39,17 +40,15 @@ var gondwanaland = (function() {
 	var cellHeight;
 
 	function setZoom(level) {
-		if (level==0) level = 1;
+		if (level <= 0) level = 0.5;
+		if (level >= 1) level = Math.floor(level);
+		if (level >= MAX_ZOOM) level = MAX_ZOOM;
+
 		zoom = level;
 
 		// how big to draw a cell?
 		cellWidth = CELL_W * zoom;
 		cellHeight = CELL_H * zoom;
-	}
-
-	function init() {
-		resize();
-		setZoom(1);
 	}
 
 	// x,y cell coords that should be in the middle of our screen
@@ -78,8 +77,8 @@ var gondwanaland = (function() {
 		for (var a = 0; a < cellsX; a++) {
 			for (var b = 0; b < cellsY; b++) {
 				// get the global x,y from our view port
-				gx = a + vx;
-				gy = b + vy;
+				var gx = a + (vx - Math.floor(cellsX/2));
+				var gy = b + (vy - Math.floor(cellsY/2));
 
 				drawCell(a,b,gx,gy);
 			}
@@ -101,6 +100,7 @@ var gondwanaland = (function() {
 		}					
 	}
 
+	/////////////////////////
 	// stolen from the server. Find a way to reuse
 	function tileXYFromGXY(gx, gy) {
 	  var x = gx%tileWidth;
@@ -114,7 +114,10 @@ var gondwanaland = (function() {
  		return  "x" + Math.floor(x/tileWidth)*tileWidth + 
         	"y" + Math.floor(y/tileHeight)*tileHeight;
 	}
+	///////////////////////// end stolen section
 
+	// TODO: abstract this to an array of config.
+	var shiftOn = false;
 	window.addEventListener("keydown", function(e){
 		switch(e.keyCode)
 		{
@@ -131,8 +134,13 @@ var gondwanaland = (function() {
 				move(vx, vy+1);
 				break;
 			case 90: // z - zoom
-				setZoom((zoom+1)%5);
-				move(vx, vy);
+				var dir = shiftOn?-1:1;
+				setZoom(zoom+dir);
+				//move(vx, vy);
+				draw();
+				break;
+			case 16: // shift
+				shiftOn = true;
 				break;
 		}
 	}, false);
@@ -141,35 +149,56 @@ var gondwanaland = (function() {
 		switch(e.keyCode)
 		{
 			case 37: // left arrow
-				Game.controls.left = false;
+				
 				break;
 			case 38: // up arrow
-				Game.controls.up = false;
+				
 				break;
 			case 39: // right arrow
-				Game.controls.right = false;
+				
 				break;
 			case 40: // down arrow
-				Game.controls.down = false;
+				
 				break;
 			case 80: // key P pauses the game
-				Game.togglePause();
+				
+				break;		
+			case 16: // key P pauses the game
+				shiftOn = false;
 				break;		
 		}
 	}, false);
 
-	$(window).resize(function() {
-		resize();
-	});
+	function userMove(event) {
+		var xy = utils.getClickPosition(event, canvas);
+
+		// TODO: translate to accretion coords.
+		console.log("X Y CLICK: " + xy.x + "," + xy.y);
+	}
 
 	function resize() {
 		cHeight = canvas.height = $("#mapContainer").height();
   		cWidth = canvas.width =  $("#mapContainer").width();
   		draw();
 	} 
+
+	function init() {
+		resize();
+		setZoom(1);
+
+		canvas.addEventListener("mousedown", userMove, false);
+	}
+
+
+	$(document).ready(function(){
+		init();
+	});
+
+	$(window).resize(function() {
+		resize();
+	});
  
 	me.move = move;
 
 	return me;
 })();
-
