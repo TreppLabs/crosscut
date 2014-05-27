@@ -1,4 +1,4 @@
-/* gondwanaland
+/* Welcome to Gondwanaland.
  *
  * The model here is to step thru every visible block in gondwanaland (on the canvas)
  * and find in memory its corresponding cell. If its there, the color is used. If its
@@ -9,7 +9,7 @@
  * start bottom left.
  */
 
-// need to change this!
+// need to change this dynamicall!?
 var tileWidth = 10;
 var tileHeight = 10;
 
@@ -23,14 +23,12 @@ var gondwanaland = (function() {
 	var cHeight = canvas.height;
 	var cWidth = canvas.width;
 
-	// where we are looking (units are accretions coords)
+	// where we are currently looking (units are accretions coords)
 	var vx = 50;
 	var vy = 50;
 
 	// how much in or out are we looking (discrete levels only)
 	var zoom ; // 1-5 - bigger the zoom level the less you see
-
-	init();
 
 	var me = {};
 
@@ -45,11 +43,6 @@ var gondwanaland = (function() {
 		// how big to draw a cell?
 		cellWidth = CELL_W * zoom;
 		cellHeight = CELL_H * zoom;
-	}
-
-	function init() {
-		resize();
-		setZoom(1);
 	}
 
 	// x,y cell coords that should be in the middle of our screen
@@ -101,6 +94,7 @@ var gondwanaland = (function() {
 		}					
 	}
 
+	/////////////////////////
 	// stolen from the server. Find a way to reuse
 	function tileXYFromGXY(gx, gy) {
 	  var x = gx%tileWidth;
@@ -114,7 +108,9 @@ var gondwanaland = (function() {
  		return  "x" + Math.floor(x/tileWidth)*tileWidth + 
         	"y" + Math.floor(y/tileHeight)*tileHeight;
 	}
+	///////////////////////// end stolen section
 
+	// TODO: abstract this to an array of config.
 	window.addEventListener("keydown", function(e){
 		switch(e.keyCode)
 		{
@@ -141,35 +137,53 @@ var gondwanaland = (function() {
 		switch(e.keyCode)
 		{
 			case 37: // left arrow
-				Game.controls.left = false;
+				
 				break;
 			case 38: // up arrow
-				Game.controls.up = false;
+				
 				break;
 			case 39: // right arrow
-				Game.controls.right = false;
+				
 				break;
 			case 40: // down arrow
-				Game.controls.down = false;
+				
 				break;
 			case 80: // key P pauses the game
-				Game.togglePause();
+				
 				break;		
 		}
 	}, false);
 
-	$(window).resize(function() {
-		resize();
-	});
+	function userMove(event) {
+		var xy = utils.getClickPosition(event, canvas);
+
+		// TODO: translate to accretion coords.
+		console.log("X Y CLICK: " + xy.x + "," + xy.y);
+	}
 
 	function resize() {
 		cHeight = canvas.height = $("#mapContainer").height();
   		cWidth = canvas.width =  $("#mapContainer").width();
   		draw();
 	} 
+
+	function init() {
+		resize();
+		setZoom(1);
+
+		canvas.addEventListener("mousedown", userMove, false);
+	}
+
+
+	$(document).ready(function(){
+		init();
+	});
+
+	$(window).resize(function() {
+		resize();
+	});
  
 	me.move = move;
 
 	return me;
 })();
-
