@@ -31,6 +31,13 @@ var utils = (function() {
         x -= canvas.offsetLeft;
         y -= canvas.offsetTop;
 
+        // This is a little extra that is needed. At least for chrome & Safari on mac.
+        // It makes it relative to the scroll position of the window. No idea why.
+        // TODO: test in other browsers! Especially on Windows.
+        var rect = canvas.getBoundingClientRect();
+  		x -= rect.left;
+  		y -= rect.top;
+
         return {x:x,y:y}
 	}
 
