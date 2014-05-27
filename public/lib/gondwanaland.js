@@ -9,6 +9,8 @@
  * start bottom left.
  */
 
+"use strict";
+
 // need to change this dynamicall!?
 var tileWidth = 10;
 var tileHeight = 10;
@@ -16,6 +18,7 @@ var tileHeight = 10;
 var CELL_W = 12; // px
 var CELL_H = 10;
 
+var MAX_ZOOM = 10;
 var gondwanaland = (function() {
 	var canvas = $("#gondwanaland")[0];
 	var ctx = canvas.getContext("2d");
@@ -37,7 +40,10 @@ var gondwanaland = (function() {
 	var cellHeight;
 
 	function setZoom(level) {
-		if (level==0) level = 1;
+		if (level <= 0) level = 0.5;
+		if (level >= 1) level = Math.floor(level);
+		if (level >= MAX_ZOOM) level = MAX_ZOOM;
+
 		zoom = level;
 
 		// how big to draw a cell?
@@ -71,8 +77,8 @@ var gondwanaland = (function() {
 		for (var a = 0; a < cellsX; a++) {
 			for (var b = 0; b < cellsY; b++) {
 				// get the global x,y from our view port
-				gx = a + vx;
-				gy = b + vy;
+				var gx = a + (vx - Math.floor(cellsX/2));
+				var gy = b + (vy - Math.floor(cellsY/2));
 
 				drawCell(a,b,gx,gy);
 			}
@@ -111,6 +117,7 @@ var gondwanaland = (function() {
 	///////////////////////// end stolen section
 
 	// TODO: abstract this to an array of config.
+	var shiftOn = false;
 	window.addEventListener("keydown", function(e){
 		switch(e.keyCode)
 		{
@@ -127,8 +134,13 @@ var gondwanaland = (function() {
 				move(vx, vy+1);
 				break;
 			case 90: // z - zoom
-				setZoom((zoom+1)%5);
-				move(vx, vy);
+				var dir = shiftOn?-1:1;
+				setZoom(zoom+dir);
+				//move(vx, vy);
+				draw();
+				break;
+			case 16: // shift
+				shiftOn = true;
 				break;
 		}
 	}, false);
@@ -150,6 +162,9 @@ var gondwanaland = (function() {
 				break;
 			case 80: // key P pauses the game
 				
+				break;		
+			case 16: // key P pauses the game
+				shiftOn = false;
 				break;		
 		}
 	}, false);

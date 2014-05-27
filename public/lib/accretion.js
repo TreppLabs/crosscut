@@ -110,6 +110,8 @@ $(window).resize(function() {
  
 // given the DOM structure of the map, make it fit nicely into container
 function resizeMap() {
+  if (window.location.hash == "#gondwanaland") return;
+  
   var height = $(window).height();
   var width = $(window).width();
   var usableHeight = height*0.8;
