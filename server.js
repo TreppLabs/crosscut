@@ -22,6 +22,7 @@ var app = express();
 var utils = require('./lib/utils');
 var bigbang = require('./lib/bigbang');
 var worldmap = require('./lib/worldmap');
+var decay = require('./lib/decay');
 
 app.set('port', process.env.PORT || 3000);
 // app.set('views', __dirname + '/views');
@@ -69,6 +70,8 @@ config.diagonalsConnected = true;
 
 worldmap.setConfig(config);
 bigbang.loadWorld();
+
+decay.startRotter();
 
 // console.log(process.env);
 
