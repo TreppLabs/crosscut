@@ -100,7 +100,7 @@ var gondwanaland = (function() {
 		if (!tile) { 
 			outlineCell(a,b, "#22ff33");
 		} else {
-			fillCell(a,b, tile.colors[cxy.x][cxy.y].color);
+			fillCell(a,b, tile.cells[cxy.x][cxy.y].color);
 		}					
 	}
 
@@ -128,7 +128,6 @@ var gondwanaland = (function() {
 	}
 
 	function outlineCell(x,y,color) {
-		var border = 1; // px around each cell
 		ctx.strokeStyle = "#22ff33"; // the matrix style colors for cool effect. Or not.
 		ctx.strokeRect(x * cellWidth, cHeight-(y+1)*cellHeight, cellWidth, cellHeight);		
 	}
@@ -169,7 +168,6 @@ var gondwanaland = (function() {
 			case 90: // z - zoom
 				var dir = shiftOn?-1:1;
 				setZoom(zoom+dir);
-				//move(vx, vy);
 				draw();
 				break;
 			case 16: // shift

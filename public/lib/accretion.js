@@ -243,16 +243,16 @@ function processMapTileList(mapTileList) {
 	    	updateTime = mapTile.updateTime;
 	    }
 	    for (var x=0; x<tileWidth; x++) {
-  			for (var y=0; y<tileHeight; y++) {
-  				// only draw if visible on client
-  				var cellX = tileX + x;
-  				var cellY = tileY + y;
-  				if ((cellX >= lowerLeftX) && (cellX <= topRightX) && (cellY >= lowerLeftX) && (cellY <= topRightY)) {
-  				  var color = mapTile.colors[x][y].color;
-  				  var mapCellId = "#mx" + cellX + "my" + cellY;
-  				  $(mapCellId).css({backgroundColor: color});                        
-  			    }
-  			}
+			for (var y=0; y<tileHeight; y++) {
+				// only draw if visible on client
+				var cellX = tileX + x;
+				var cellY = tileY + y;
+				if ((cellX >= lowerLeftX) && (cellX <= topRightX) && (cellY >= lowerLeftX) && (cellY <= topRightY)) {
+				  var color = mapTile.cells[x][y].color;
+				  var mapCellId = "#mx" + cellX + "my" + cellY;
+				  $(mapCellId).css({backgroundColor: color});                        
+			    }
+			}
     	}
   	}              
   

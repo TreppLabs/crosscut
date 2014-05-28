@@ -56,6 +56,8 @@ config.tileHeight=10;  // y
 // should agree with client, see .../index.jade
 config.emptyCellColor = '#B99F67';
 
+config.startingCellStrength = 100;
+
 // Local mode: 
 //   true:  read/write tiles from (AWS) DB
 //   false: tiles kept in memory, runnable on local machine
