@@ -75,6 +75,11 @@ var gondwanaland = (function() {
 	// Maybe only draw the whole then when we move. Otherwise its spot changes only
 	// Unless this is cheap enough.
 	function draw(tileId) {
+		// only update one tile if provided
+		//if (tileId) {
+		//	drawTile(tileId);
+		//	return;
+		//}
 		// redraw the whole screen.
 		ctx.clearRect(0,0,cWidth, cHeight);
 
@@ -89,6 +94,10 @@ var gondwanaland = (function() {
 			}
 		}
 	}	
+
+	function drawTile(id) {
+		// how to work this out??
+	}
 
 	function drawCell(a,b,x,y) {
 		// get the tile
@@ -153,19 +162,22 @@ var gondwanaland = (function() {
 	// TODO: abstract this to an array of config.
 	var shiftOn = false;
 	window.addEventListener("keydown", function(e){
+		var jump = 1;
+		if (shiftOn) jump += 5;
+
 		switch(e.keyCode)
 		{
 			case 37: // left arrow
-				move(vx + 1, vy);
+				move(vx + jump, vy);
 				break;
 			case 38: // up arrow
-				move(vx, vy-1);
+				move(vx, vy-jump);
 				break;
 			case 39: // right arrow
-				move(vx - 1, vy);
+				move(vx - jump, vy);
 				break;
 			case 40: // down arrow
-				move(vx, vy+1);
+				move(vx, vy+jump);
 				break;
 			case 90: // z - zoom
 				var dir = shiftOn?-1:1;
