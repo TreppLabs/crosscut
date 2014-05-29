@@ -157,14 +157,18 @@ app.post('/getupdatetime', function(req, res) {
   res.send('' + worldmap.lastUpdateTime());
 }); 
 
+app.get("/tile/:id", function (req, res) {
+  var id = req.params.id;
+  res.send(worldmap.readMapTile(id));
+});
+
 app.post('/clicker', function(req, res) {
   var cellX = parseInt(req.body.cellX);
   var cellY = parseInt(req.body.cellY);
   var color = req.body.color;
-  
-  var result = worldmap.move(cellX, cellY, color);
-  console.log("Result of clicking is: "+result);
-  res.send(result);
+
+  var tile = worldmap.move(cellX, cellY, color);
+  res.send(tile);
 });
 
 http.createServer(app).listen(app.get('port'), function(){

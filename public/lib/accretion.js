@@ -222,6 +222,7 @@ function updateMap() {
 
 var tiles = {};
 function processMapTileList(mapTileList) {
+  return;
       var updateTime = 0;
 
       tiles = {};

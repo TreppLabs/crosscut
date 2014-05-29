@@ -74,8 +74,8 @@ var gondwanaland = (function() {
 	// But what about if a single cell is changed, and its visible?
 	// Maybe only draw the whole then when we move. Otherwise its spot changes only
 	// Unless this is cheap enough.
-	function draw() {
-
+	function draw(tileId) {
+		// redraw the whole screen.
 		ctx.clearRect(0,0,cWidth, cHeight);
 
 		// step over each cell on the screen
@@ -92,13 +92,13 @@ var gondwanaland = (function() {
 
 	function drawCell(a,b,x,y) {
 		// get the tile
-		var tile = tiles[tileIdFromXY(x,y)];
-
-		// get the local tile coords
+		var tileId = tileIdFromXY(x,y);
+		var tile = tiles[tileId];
 		var cxy = tileXYFromGXY(x,y);
 
 		if (!tile) { 
 			outlineCell(a,b, "#22ff33");
+			server.requestTileFromServer(tileId, draw);
 		} else {
 			fillCell(a,b, tile.cells[cxy.x][cxy.y].color);
 		}					
@@ -107,17 +107,19 @@ var gondwanaland = (function() {
 	function userMove(event) {
 		var xy = utils.getClickPosition(event, canvas);
 
-		// translate click position to accretion coords.
+		// translate click position to gondandwanaland coords.
 		var clickedX = Math.floor(xy.x / cellWidth);
 		var clickedY = Math.floor((cHeight - xy.y)/ cellHeight); // flip the Y 
 
 		console.log("X Y cell click ["+(xy.y/ cellHeight)+"] (" + xy.x+","+xy.y+ ") " + clickedX + "," + clickedY);
 
 		// Locally change the color
-		fillCell(clickedX, clickedY, "#33ff44");
+		fillCell(clickedX, clickedY, userColorChoice);
 
-		// TODO: Send to the server
+		// Send click to the server (in accretion global coords)
+		server.recordClick(clickedX + vx - Math.floor(cellsX/2), clickedY + vy - Math.floor(cellsY/2), userColorChoice, draw);   
 	}
+
 
 	// Draw a filled cell at viewport coordinates (in agc botom left = 0,0) 
 	// hence we need to convert to canvas coord which are top left = 0,0
