@@ -2,5 +2,10 @@
   "AWS_REGION": "us-west-2",
   "STARTUP_SIGNUP_TABLE": "my-startup-signup-table",
   "CROSSCUT_MAPTILE_TABLE": "crosscut-maptile",
-  "NEW_SIGNUP_TOPIC": "arn:aws:sns:us-west-2:244265663318:my-sns-topic"
+  "NEW_SIGNUP_TOPIC": "arn:aws:sns:us-west-2:244265663318:my-sns-topic",
+
+  "passwords": {
+  	"jim": "ben",
+  	"simon": "zak"
+  }
 }

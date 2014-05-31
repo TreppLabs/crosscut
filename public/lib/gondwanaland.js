@@ -31,13 +31,17 @@ var gondwanaland = (function() {
 	var cellsY = 0;
 
 	// where we are currently looking (units are accretions coords)
-	var vx = 50;
-	var vy = 50;
+	var vx = 10;
+	var vy = 10;
 
 	// how much in or out are we looking (discrete levels only)
 	var zoom ; // 1-5 - bigger the zoom level the less you see
 
 	var me = {};
+
+	// the set of tiles we are interested in (i.e., looking at) that the server
+	// should give us updates about, periodically
+	var aoi = {};
 
 	// how big to draw a cell?
 	var cellWidth;
@@ -67,6 +71,9 @@ var gondwanaland = (function() {
 
 		// indicate a draw is required (should set flag for framerate pick up)
 		draw();
+
+		// register all our new area of interest based on what was drawn
+		server.registerAOI(aoi);
 	}
 
 	// Draw only the visible items on the list
@@ -82,7 +89,7 @@ var gondwanaland = (function() {
 		//}
 		// redraw the whole screen.
 		ctx.clearRect(0,0,cWidth, cHeight);
-
+		aoi = {};
 		// step over each cell on the screen
 		for (var a = 0; a < cellsX; a++) {
 			for (var b = 0; b < cellsY; b++) {
@@ -99,11 +106,17 @@ var gondwanaland = (function() {
 		// how to work this out??
 	}
 
+	// Draw a cell on a square in our viewport. Oh.. and while we are at, make a list
+	// of every tile id we come across and give that to the server as our AOI (area of
+	// interest)
 	function drawCell(a,b,x,y) {
 		// get the tile
 		var tileId = tileIdFromXY(x,y);
 		var tile = tiles[tileId];
 		var cxy = tileXYFromGXY(x,y);
+
+		// record that we are drawing here, so need updates in the future
+		aoi[tileId] = true; 
 
 		if (!tile) { 
 			outlineCell(a,b, "#22ff33");
@@ -203,29 +216,30 @@ var gondwanaland = (function() {
 		cHeight = canvas.height = $("#mapContainer").height();
   		cWidth = canvas.width =  $("#mapContainer").width();
 
-		// how many cells fit on the page?
+		// how many cells now fit on the page?
 		setZoom(zoom);
 
   		draw();
 	} 
 
 	function init() {
-		setZoom(1);
-		resize();
+		setZoom(2);
+		//resize();
+		$(window).trigger('resize');
 
 		canvas.addEventListener("mousedown", userMove, false);
 	}
 
-
-	$(document).ready(function(){
+	function start() {
 		init();
-	});
+	}
 
 	$(window).resize(function() {
 		resize();
 	});
  
 	me.move = move;
+	me.start = start;
 
 	return me;
 })();

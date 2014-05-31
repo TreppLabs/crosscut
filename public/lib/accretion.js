@@ -81,14 +81,18 @@ function updateCellsHigh() {
 function login() {
   // select user color
   var username = $("#username").val();
-  if (username == "jim") {
-    userColorChoice = c1;
-  } else if (username == "simon") {
-    userColorChoice = c2;
-  }  
 
-  // TEST: trying out a canvas mddel called gondwanaland
-  if (window.location.hash == "#gondwanaland") {
+  // login and get the users color
+  $.post("/login", {username: username, password: "blah"}, function (color) {
+    userColorChoice = color;
+    bang();
+  });
+}
+
+function bang() {
+  gondwanaland.start();
+
+  if (window.location.hash != "#divs") {
     $("#gondwanaland").show();
     $("#mapTable").hide();
   } else {
@@ -105,7 +109,7 @@ function login() {
 }
 
 $(window).resize(function() {
-  resizeMap();
+  //resizeMap();
 }); 
  
 // given the DOM structure of the map, make it fit nicely into container
@@ -203,21 +207,21 @@ function cellClick() {
 
 // Last change to the whole map. I think this needs to be just the tile
 function updateLastServerUpdateTime(done) {
-    $.post( "/getupdatetime", 'get update time', function(data) {
-		  timeOfLastServerUpdate = data;
-		  done && done();
-    });
+    //$.post( "/getupdatetime", 'get update time', function(data) {
+		//  timeOfLastServerUpdate = data;
+		//  done && done();
+    //});
 }
 
 // Request an updated region from the server
 function updateMap() {
-    $.post( "/getmapregion", {
-			"lowerLeftX" : lowerLeftX, 
-			"lowerLeftY" : lowerLeftY, 
-			"topRightX" : topRightX, 
-			"topRightY" : topRightY 
-		}, processMapTileList);
-    console.log("Updated map received");
+    //$.post( "/getmapregion", {
+	//		"lowerLeftX" : lowerLeftX, 
+	//		"lowerLeftY" : lowerLeftY, 
+	//		"topRightX" : topRightX, 
+//			"topRightY" : topRightY 
+//		}, processMapTileList);
+ //   console.log("Updated map received");
 }
 
 var tiles = {};

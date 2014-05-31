@@ -2,8 +2,9 @@
 
 var server = (function() {
 	var me = {
-		requestTileFromServer: requestTileFromServer,
-		recordClick: recordClick
+		requestTileFromServer: 	requestTileFromServer,
+		recordClick: 			recordClick,
+		registerAOI:  			registerAOI
 	}
 
 	// The current outstanding requests to the server for tiles so we don't repeat.
@@ -32,6 +33,10 @@ var server = (function() {
 		 	callback();
 		});
 	}	
+
+	function registerAOI(aoi) {
+		//$.post("/aoi", aoi);
+	}
 
 	return me;
 })();
