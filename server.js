@@ -23,6 +23,7 @@ var utils = require('./lib/utils');
 var bigbang = require('./lib/bigbang');
 var worldmap = require('./lib/worldmap');
 var decay = require('./lib/decay');
+var mothernature = require('./lib/mothernature');
 
 app.set('port', process.env.PORT || 3000);
 // app.set('views', __dirname + '/views');
@@ -34,6 +35,9 @@ app.use(express.methodOverride());
 //app.use(app.router);
 app.use(express.static(path.join(__dirname, 'public')));
 app.locals.theme = process.env.theme; //Make the THEME environment variable available to the app. 
+
+app.use(express.cookieParser());
+app.use(express.session({secret: 'meconium'}));
 
 //Read config values from a JSON file.
 var config = fs.readFileSync('./app_config.json', 'utf8');
@@ -70,55 +74,11 @@ config.diagonalsConnected = true;
 
 worldmap.setConfig(config);
 bigbang.loadWorld();
+mothernature.grow();
 
 decay.startRotter();
 
 // console.log(process.env);
-
-//GET home page.
-//app.get('/', routes.index);
-
-//POST signup form.
-app.post('/signup', function(req, res) {
-  var nameField = req.body.name,
-      emailField = req.body.email,
-      previewBool = req.body.previewAccess;
-  res.send(200);
-  signup(nameField, emailField, previewBool);
-});
-
-
-//Add signup form data to database.
-var signup = function (nameSubmitted, emailSubmitted, previewPreference) {
-  if (config.localMode) {
-    console.log('signup -- skipping in local mode');
-    return;
-  }
-  var formData = {
-    TableName: config.STARTUP_SIGNUP_TABLE,
-    Item: {
-      email: {'S': emailSubmitted}, 
-      name: {'S': nameSubmitted},
-      preview: {'S': previewPreference}
-    }
-  };
-  db.putItem(formData, function(err, data) {
-    if (err) {
-      console.log('Error adding item to database: ', err);
-    } else {
-      console.log('Form data added to database.');
-      var snsMessage = 'New signup: %EMAIL%'; //Send SNS notification containing email from form.
-      snsMessage = snsMessage.replace('%EMAIL%', formData.Item.email['S']);
-      sns.publish({ TopicArn: config.NEW_SIGNUP_TOPIC, Message: snsMessage }, function(err, data) {
-        if (err) {
-          console.log('Error publishing SNS message: ' + err);
-        } else {
-          console.log('SNS message sent.');
-        }
-      });  
-    }
-  });
-};
 
 // return a rectangular region of the map
 // whatever the client asks for
@@ -152,22 +112,66 @@ app.post('/getmapregion', function(req, res) {
   });
 });
 
+// redundant
 app.post('/status', function(req, res) {
   res.send(serverStatus);
 });
 
+// redundant?
 app.post('/getupdatetime', function(req, res) {
   res.send('' + worldmap.lastUpdateTime());
 }); 
 
+app.post("/login", function(req,res) {
+  var username = req.body.username;
+  var password = req.body.password;
+
+  console.log("LOGIN: " + username + ", pw: " + password);
+
+  req.session.username = username;
+
+  // to be created on signup
+  var colors = {
+    jim: "#ff22dd",
+    simon: "#55aa11"
+  }
+
+  req.session.color = colors[username];
+  res.send(colors[username]);
+
+  /*
+  if (config.passwords[username] === password) {
+    req.session.username = username;
+    res.send(200); // color here
+  } else {
+    res.send(403);
+  }
+  */
+});
+
+app.get("/tile/:id", function (req, res) {
+  var id = req.params.id;
+  res.send(worldmap.readMapTile(id));
+});
+
+app.post('/aoi', function (req,res) {
+  if (!req.session.username) { res.send(401); return }
+  req.session.aoi = req.body;
+  res.send(200);
+});
+
+// Get the changes to my area of interest
+app.get('/changes', function(req, res) {
+  res.send(mothernature.getChanges(req.session.username));
+});
+
 app.post('/clicker', function(req, res) {
   var cellX = parseInt(req.body.cellX);
   var cellY = parseInt(req.body.cellY);
-  var color = req.body.color;
-  
-  var result = worldmap.move(cellX, cellY, color);
-  console.log("Result of clicking is: "+result);
-  res.send(result);
+  var color = req.session.color;
+
+  var tile = worldmap.move(cellX, cellY, color);
+  res.send(tile);
 });
 
 http.createServer(app).listen(app.get('port'), function(){

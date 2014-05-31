@@ -12,7 +12,6 @@ describe("worldmap", function() {
 		var move = worldmap.move(0,0,"#red");	// click the cell to red
 		cell = worldmap.getCell(0,0); 			// WHY DO I NEED TO DO THIS??!!? WHO IS OVERWRITING THIS
 		expect(cell.color).toBe("#red");		// now it should be red
-		expect(move).not.toBe(false);			// and should not have failed being set
 	});
 
 	it("move on non-empty location", function () {
@@ -20,11 +19,10 @@ describe("worldmap", function() {
 		expect(cell.color).not.toBe("#red");	// its not blue
 		expect(cell.color).not.toBe("#blue");	// and its not red
 		var move = worldmap.move(0,0,"#red");	// click it red
-		expect(move).not.toBe(false);			// this should work
-		cell = worldmap.getCell(0,0);			
+		cell = worldmap.getCell(0,0);			// why need to get it again???
 		expect(cell.color).toBe("#red");		// and the cell should be red
 		var move = worldmap.move(0,0,"#blue");	// try to make it blue
-		expect(move).toBe(false);				// this should fail
+		cell = worldmap.getCell(0,0);			// why need to get it again???
 		expect(cell.color).toBe("#red");		// and it should still be red
 	})
 });

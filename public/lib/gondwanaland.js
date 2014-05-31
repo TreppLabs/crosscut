@@ -23,17 +23,25 @@ var gondwanaland = (function() {
 	var canvas = $("#gondwanaland")[0];
 	var ctx = canvas.getContext("2d");
 
-	var cHeight = canvas.height;
-	var cWidth = canvas.width;
+	var cHeight;
+	var cWidth;
+
+	// how many cells fit on the page?
+	var cellsX = 0;
+	var cellsY = 0;
 
 	// where we are currently looking (units are accretions coords)
-	var vx = 50;
-	var vy = 50;
+	var vx = 10;
+	var vy = 10;
 
 	// how much in or out are we looking (discrete levels only)
 	var zoom ; // 1-5 - bigger the zoom level the less you see
 
 	var me = {};
+
+	// the set of tiles we are interested in (i.e., looking at) that the server
+	// should give us updates about, periodically
+	var aoi = {};
 
 	// how big to draw a cell?
 	var cellWidth;
@@ -47,8 +55,12 @@ var gondwanaland = (function() {
 		zoom = level;
 
 		// how big to draw a cell?
-		cellWidth = CELL_W * zoom;
-		cellHeight = CELL_H * zoom;
+		cellWidth = Math.ceil(CELL_W * zoom);
+		cellHeight = Math.ceil(CELL_H * zoom);
+
+		// how many cells fit on the page?
+		cellsX = Math.ceil(cWidth/cellWidth);
+		cellsY = Math.ceil(cHeight/cellHeight);
 	}
 
 	// x,y cell coords that should be in the middle of our screen
@@ -58,7 +70,11 @@ var gondwanaland = (function() {
 		vy = y;
 
 		// indicate a draw is required (should set flag for framerate pick up)
+		aoi = {};
 		draw();
+
+		// register all our new area of interest based on what was drawn
+		server.registerAOI(aoi);
 	}
 
 	// Draw only the visible items on the list
@@ -66,17 +82,19 @@ var gondwanaland = (function() {
 	// But what about if a single cell is changed, and its visible?
 	// Maybe only draw the whole then when we move. Otherwise its spot changes only
 	// Unless this is cheap enough.
-	function draw() {
-		// how many cells fit on the page?
-		var cellsX = cWidth/cellWidth;
-		var cellsY = cHeight/cellHeight;
+	function draw(tile) {
+		// only update one tile if provided
+		//if (tile) {
+		//	drawTile(tileId);
+		//	return;
+		//}
 
+		// redraw the whole screen.
 		ctx.clearRect(0,0,cWidth, cHeight);
-		ctx.strokeStyle = "#22ff33"; // the matrix style colors for cool effect. Or not.
-     
+		// step over each cell on the screen
 		for (var a = 0; a < cellsX; a++) {
 			for (var b = 0; b < cellsY; b++) {
-				// get the global x,y from our view port
+				// get the accretion global coords (agc) based on our view port
 				var gx = a + (vx - Math.floor(cellsX/2));
 				var gy = b + (vy - Math.floor(cellsY/2));
 
@@ -85,19 +103,58 @@ var gondwanaland = (function() {
 		}
 	}	
 
+	function drawTile(id) {
+		// how to work this out??
+	}
+
+	// Draw a cell on a square in our viewport. Oh.. and while we are at, make a list
+	// of every tile id we come across and give that to the server as our AOI (area of
+	// interest)
 	function drawCell(a,b,x,y) {
 		// get the tile
-		var tile = tiles[tileIdFromXY(x,y)];
-
-		// get the local tile coords
+		var tileId = tileIdFromXY(x,y);
+		var tile = tiles[tileId];
 		var cxy = tileXYFromGXY(x,y);
 
+		// record that we are drawing here, so need updates in the future
+		aoi[tileId] = true; 
+
 		if (!tile) { 
-			ctx.strokeRect(a*cellWidth, cHeight - b*cellHeight, cellWidth, cellHeight);
+			outlineCell(a,b, "#22ff33");
+			server.requestTileFromServer(tileId, draw);
 		} else {
-			ctx.fillStyle = tile.cells[cxy.x][cxy.y].color;
-			ctx.fillRect(a*cellWidth+1, cHeight-b*cellHeight+1, cellWidth-1, cellHeight-1);
+			fillCell(a,b, tile.cells[cxy.x][cxy.y].color);
 		}					
+	}
+
+	function userMove(event) {
+		var xy = utils.getClickPosition(event, canvas);
+
+		// translate click position to gondandwanaland coords.
+		var clickedX = Math.floor(xy.x / cellWidth);
+		var clickedY = Math.floor((cHeight - xy.y)/ cellHeight); // flip the Y 
+
+		console.log("X Y cell click ["+(xy.y/ cellHeight)+"] (" + xy.x+","+xy.y+ ") " + clickedX + "," + clickedY);
+
+		// Locally change the color
+		fillCell(clickedX, clickedY, userColorChoice);
+
+		// Send click to the server (in accretion global coords)
+		server.recordClick(clickedX + vx - Math.floor(cellsX/2), clickedY + vy - Math.floor(cellsY/2), userColorChoice, draw);   
+	}
+
+
+	// Draw a filled cell at viewport coordinates (in agc botom left = 0,0) 
+	// hence we need to convert to canvas coord which are top left = 0,0
+	function fillCell(x, y, color) {
+		var border = 1; // px around each cell
+		ctx.fillStyle = color;
+		ctx.fillRect(x * cellWidth+border, cHeight-(y+1)*cellHeight+border, cellWidth-1, cellHeight-1);
+	}
+
+	function outlineCell(x,y,color) {
+		ctx.strokeStyle = "#22ff33"; // the matrix style colors for cool effect. Or not.
+		ctx.strokeRect(x * cellWidth, cHeight-(y+1)*cellHeight, cellWidth, cellHeight);		
 	}
 
 	/////////////////////////
@@ -119,24 +176,26 @@ var gondwanaland = (function() {
 	// TODO: abstract this to an array of config.
 	var shiftOn = false;
 	window.addEventListener("keydown", function(e){
+		var jump = 1;
+		if (shiftOn) jump += 5;
+
 		switch(e.keyCode)
 		{
 			case 37: // left arrow
-				move(vx + 1, vy);
+				move(vx + jump, vy);
 				break;
 			case 38: // up arrow
-				move(vx, vy-1);
+				move(vx, vy-jump);
 				break;
 			case 39: // right arrow
-				move(vx - 1, vy);
+				move(vx - jump, vy);
 				break;
 			case 40: // down arrow
-				move(vx, vy+1);
+				move(vx, vy+jump);
 				break;
 			case 90: // z - zoom
 				var dir = shiftOn?-1:1;
 				setZoom(zoom+dir);
-				//move(vx, vy);
 				draw();
 				break;
 			case 16: // shift
@@ -148,57 +207,39 @@ var gondwanaland = (function() {
 	window.addEventListener("keyup", function(e){
 		switch(e.keyCode)
 		{
-			case 37: // left arrow
-				
-				break;
-			case 38: // up arrow
-				
-				break;
-			case 39: // right arrow
-				
-				break;
-			case 40: // down arrow
-				
-				break;
-			case 80: // key P pauses the game
-				
-				break;		
 			case 16: // key P pauses the game
 				shiftOn = false;
 				break;		
 		}
 	}, false);
 
-	function userMove(event) {
-		var xy = utils.getClickPosition(event, canvas);
-
-		// TODO: translate to accretion coords.
-		console.log("X Y CLICK: " + xy.x + "," + xy.y);
-	}
-
 	function resize() {
 		cHeight = canvas.height = $("#mapContainer").height();
   		cWidth = canvas.width =  $("#mapContainer").width();
+
+		// how many cells now fit on the page?
+		setZoom(zoom);
+
   		draw();
 	} 
 
 	function init() {
+		setZoom(2);
 		resize();
-		setZoom(1);
 
 		canvas.addEventListener("mousedown", userMove, false);
 	}
 
-
-	$(document).ready(function(){
+	function start() {
 		init();
-	});
+	}
 
 	$(window).resize(function() {
 		resize();
 	});
  
 	me.move = move;
+	me.start = start;
 
 	return me;
 })();
