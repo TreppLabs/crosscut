@@ -133,6 +133,7 @@ app.post("/login", function(req,res) {
     simon: "#55aa11"
   }
 
+  req.session.color = colors[username];
   res.send(colors[username]);
 
   /*
@@ -152,7 +153,8 @@ app.get("/tile/:id", function (req, res) {
 
 app.post('/aoi', function (req,res) {
   if (!req.session.username) { res.send(401); return }
-  req.session.aoi = req.query;
+  req.session.aoi = req.body;
+  res.send(200);
 });
 
 // Get the changes to my area of interest
@@ -163,7 +165,7 @@ app.get('/changes', function(req, res) {
 app.post('/clicker', function(req, res) {
   var cellX = parseInt(req.body.cellX);
   var cellY = parseInt(req.body.cellY);
-  var color = req.body.color;
+  var color = req.session.color;
 
   var tile = worldmap.move(cellX, cellY, color);
   res.send(tile);

@@ -70,6 +70,7 @@ var gondwanaland = (function() {
 		vy = y;
 
 		// indicate a draw is required (should set flag for framerate pick up)
+		aoi = {};
 		draw();
 
 		// register all our new area of interest based on what was drawn
@@ -81,15 +82,15 @@ var gondwanaland = (function() {
 	// But what about if a single cell is changed, and its visible?
 	// Maybe only draw the whole then when we move. Otherwise its spot changes only
 	// Unless this is cheap enough.
-	function draw(tileId) {
+	function draw(tile) {
 		// only update one tile if provided
-		//if (tileId) {
+		//if (tile) {
 		//	drawTile(tileId);
 		//	return;
 		//}
+
 		// redraw the whole screen.
 		ctx.clearRect(0,0,cWidth, cHeight);
-		aoi = {};
 		// step over each cell on the screen
 		for (var a = 0; a < cellsX; a++) {
 			for (var b = 0; b < cellsY; b++) {

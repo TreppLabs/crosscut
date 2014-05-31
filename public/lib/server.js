@@ -22,20 +22,20 @@ var server = (function() {
 			// clear the request
 			delete serverRequestsInProgress[id];
 			tiles[id] = tile; // save it in our current database
-			callback();
+			callback(tile);
 		});
 	}
 
 	// TODO: color should be in a server side session
-	function recordClick(x,y, color, callback) {
-		$.post( "/clicker", {"cellX" : x, "cellY" : y, "color": color}, function(tile) {
+	function recordClick(x,y, callback) {
+		$.post( "/clicker", {"cellX" : x, "cellY" : y}, function(tile) {
 			tiles[tile.id] = tile; // save it in our current database
 		 	callback();
 		});
 	}	
 
 	function registerAOI(aoi) {
-		//$.post("/aoi", aoi);
+		$.post("/aoi", aoi);
 	}
 
 	return me;
