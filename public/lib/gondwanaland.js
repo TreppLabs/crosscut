@@ -224,8 +224,7 @@ var gondwanaland = (function() {
 
 	function init() {
 		setZoom(2);
-		//resize();
-		$(window).trigger('resize');
+		resize();
 
 		canvas.addEventListener("mousedown", userMove, false);
 	}
