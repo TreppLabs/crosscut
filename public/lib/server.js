@@ -39,10 +39,6 @@ var server = (function() {
 	}
 
 	function getChanges(callback) {
-		
-		// DO NOTHING FOR DEBUGGING
-		return;
-
 		$.get("/changes", function (tiles) {
 			Object.keys(tiles).forEach(function(t) {
 				console.log("Got a tile from our AOI: " + t.id);

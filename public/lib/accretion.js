@@ -35,7 +35,9 @@ function bang() {
   gondwanaland.init();
   $("#gondwanaland").show();
   
-  setInterval(getCellUpdates, POLLING_INTERVAL);
+  // NOTE: This has been taken out until we get the regular drawing and 
+  //        updating routines working smoothly so as not to muddy the waters.
+  // setInterval(getCellUpdates, POLLING_INTERVAL);
 }
 
 // Move to socket.io soon
