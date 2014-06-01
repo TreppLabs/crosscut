@@ -11,7 +11,11 @@ var c4 = '#766457';
 
 var userColorChoice = c2;
 
+<<<<<<< Updated upstream
 // viewport settings
+=======
+// arbitrary part of map
+>>>>>>> Stashed changes
 var lowerLeftX = 5;
 var lowerLeftY = 5;
 var topRightX = 25;

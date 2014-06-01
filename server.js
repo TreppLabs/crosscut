@@ -22,6 +22,7 @@ var app = express();
 var utils = require('./lib/utils');
 var bigbang = require('./lib/bigbang');
 var worldmap = require('./lib/worldmap');
+var decay = require('./lib/decay');
 var mothernature = require('./lib/mothernature');
 
 app.set('port', process.env.PORT || 3000);
@@ -74,6 +75,8 @@ config.diagonalsConnected = true;
 worldmap.setConfig(config);
 bigbang.loadWorld();
 mothernature.grow();
+
+decay.startRotter();
 
 // console.log(process.env);
 
