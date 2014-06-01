@@ -30,9 +30,9 @@ var gondwanaland = (function() {
 	var cellsX = 0;
 	var cellsY = 0;
 
-	// where we are currently looking (units are accretions coords)
-	var vx = 10;
-	var vy = 10;
+	// The middle of where we are currently looking (units are accretions coords)
+	var vx = 0;
+	var vy = 0;
 
 	// how much in or out are we looking (discrete levels only)
 	var zoom ; // 1-5 - bigger the zoom level the less you see
@@ -82,15 +82,16 @@ var gondwanaland = (function() {
 	// But what about if a single cell is changed, and its visible?
 	// Maybe only draw the whole then when we move. Otherwise its spot changes only
 	// Unless this is cheap enough.
-	function draw(tile) {
+	function draw(tileId) {
 		// only update one tile if provided
-		//if (tile) {
-		//	drawTile(tileId);
-		//	return;
-		//}
+		if (tileId) {
+			drawTile(tileId);
+			return;
+		}
 
 		// redraw the whole screen.
 		ctx.clearRect(0,0,cWidth, cHeight);
+
 		// step over each cell on the screen
 		for (var a = 0; a < cellsX; a++) {
 			for (var b = 0; b < cellsY; b++) {
@@ -103,8 +104,31 @@ var gondwanaland = (function() {
 		}
 	}	
 
+	// Draw a single tile in the right place on the viewport
 	function drawTile(id) {
-		// how to work this out??
+		var gxy = getXYFromId(id);
+
+		var viewX = gxy.x - vx + Math.floor(cellsX/2);
+		var viewY = gxy.y - vx + Math.floor(cellsY/2);
+
+		// fill the tile background with black
+		//ctx.clearRect(viewX*cellWidth, cHeight - (viewY+1)*cellHeight,tileWidth*cellWidth, tileHeight*cellHeight);
+console.log("drawing tile "+id+" at view coords " + viewX + "," + viewY);
+
+		// draw each of the 10x10 tile cells
+		for (var a = viewX; a < viewX+tileWidth; a++) {
+			for (var b = viewY; b < viewY+tileHeight; b++) {
+				drawCell(a,b,gxy.x+a-viewX, gxy.y+b-viewY);
+			}
+		} 
+	}
+
+	// convert "xNNNynnnnn" to NNN,nnnnn
+	var re = /(-?\d+)y(-?\d+)/;
+	function getXYFromId(id) {
+		var rr = re.exec(id);
+		var xy = {x: parseInt(rr[1]), y: parseInt(rr[2])}
+		return xy;
 	}
 
 	// Draw a cell on a square in our viewport. Oh.. and while we are at, make a list
@@ -140,14 +164,14 @@ var gondwanaland = (function() {
 		fillCell(clickedX, clickedY, userColorChoice);
 
 		// Send click to the server (in accretion global coords)
-		server.recordClick(clickedX + vx - Math.floor(cellsX/2), clickedY + vy - Math.floor(cellsY/2), userColorChoice, draw);   
+		server.recordClick(clickedX + vx - Math.floor(cellsX/2), clickedY + vy - Math.floor(cellsY/2), draw);   
 	}
-
 
 	// Draw a filled cell at viewport coordinates (in agc botom left = 0,0) 
 	// hence we need to convert to canvas coord which are top left = 0,0
 	function fillCell(x, y, color) {
 		var border = 1; // px around each cell
+		//ctx.clearRect(x * cellWidth, cHeight-(y+1)*cellHeight, cellWidth, cellHeight);
 		ctx.fillStyle = color;
 		ctx.fillRect(x * cellWidth+border, cHeight-(y+1)*cellHeight+border, cellWidth-1, cellHeight-1);
 	}

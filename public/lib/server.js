@@ -22,7 +22,7 @@ var server = (function() {
 			// clear the request
 			delete serverRequestsInProgress[id];
 			tiles[id] = tile; // save it in our current database
-			callback(tile);
+			callback(id); // draw just that tile
 		});
 	}
 
