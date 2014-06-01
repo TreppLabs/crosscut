@@ -70,11 +70,8 @@ var gondwanaland = (function() {
 		vy = y;
 
 		// indicate a draw is required (should set flag for framerate pick up)
-		aoi = {};
 		draw();
 
-		// register all our new area of interest based on what was drawn
-		server.registerAOI(aoi);
 	}
 
 	// Draw only the visible items on the list
@@ -83,6 +80,9 @@ var gondwanaland = (function() {
 	// Maybe only draw the whole then when we move. Otherwise its spot changes only
 	// Unless this is cheap enough.
 	function draw(tileId) {
+		// reset the area of interests
+		aoi = {};
+
 		// only update one tile if provided
 		if (tileId) {
 			drawTile(tileId);
@@ -102,6 +102,10 @@ var gondwanaland = (function() {
 				drawCell(a,b,gx,gy);
 			}
 		}
+
+		// register all our new area of interest based on what was drawn
+		server.registerAOI(aoi);
+
 	}	
 
 	// Draw a single tile in the right place on the viewport
@@ -254,16 +258,13 @@ console.log("drawing tile "+id+" at view coords " + viewX + "," + viewY);
 		canvas.addEventListener("mousedown", userMove, false);
 	}
 
-	function start() {
-		init();
-	}
-
 	$(window).resize(function() {
 		resize();
 	});
  
 	me.move = move;
-	me.start = start;
+	me.init = init;
+	me.draw = draw;
 
 	return me;
 })();

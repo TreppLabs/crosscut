@@ -4,7 +4,8 @@ var server = (function() {
 	var me = {
 		requestTileFromServer: 	requestTileFromServer,
 		recordClick: 			recordClick,
-		registerAOI:  			registerAOI
+		registerAOI:  			registerAOI,
+		getChanges: 			getChanges
 	}
 
 	// The current outstanding requests to the server for tiles so we don't repeat.
@@ -19,23 +20,35 @@ var server = (function() {
 
 		// make request
 		$.get("/tile/"+id, function(tile) {
-			// clear the request
+			// clear the request in progress
 			delete serverRequestsInProgress[id];
 			tiles[id] = tile; // save it in our current database
 			callback(id); // draw just that tile
 		});
 	}
 
-	// TODO: color should be in a server side session
-	function recordClick(x,y, callback) {
+	function recordClick(x,y, draw) {
 		$.post( "/clicker", {"cellX" : x, "cellY" : y}, function(tile) {
 			tiles[tile.id] = tile; // save it in our current database
-		 	callback();
+		 	draw();
 		});
 	}	
 
 	function registerAOI(aoi) {
 		$.post("/aoi", aoi);
+	}
+
+	function getChanges(callback) {
+		
+		// DO NOTHING FOR DEBUGGING
+		return;
+
+		$.get("/changes", function (tiles) {
+			Object.keys(tiles).forEach(function(t) {
+				console.log("Got a tile from our AOI: " + t.id);
+				tiles[i.id] = t;
+			});
+		});
 	}
 
 	return me;

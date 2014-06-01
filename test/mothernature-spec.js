@@ -35,8 +35,8 @@ describe("mothernature", function() {
 		mothernature.recordChange(1,2,"color", "t12");
 		var changes = mothernature.getChanges("julie");
 
-		expect(changes["t12"]).toBe(true);
-		expect(changes["xyz"]).toBe(undefined);
+		expect(changes["t12"]).toBeDefined();
+		expect(changes["xyz"]).toBeUndefined();
 	});
 
 	it("make two changes to same item, should be no different", function() {
@@ -45,8 +45,8 @@ describe("mothernature", function() {
 		mothernature.recordChange(1,2,"color", "t12");
 		var changes = mothernature.getChanges("julie");
 
-		expect(changes["t12"]).toBe(true);
-		expect(changes["xyz"]).toBe(undefined);
+		expect(changes["t12"]).toBeDefined();
+		expect(changes["xyz"]).toBeUndefined();
 	});
 
 	it("make 1 change with two AOIs", function() {
@@ -54,8 +54,8 @@ describe("mothernature", function() {
 		mothernature.recordChange(1,2,"color", "t12");
 		var changes = mothernature.getChanges("julie");
 
-		expect(changes["t12"]).toBe(true);
-		expect(changes["t333"]).toBe(undefined);
+		expect(changes["t12"]).toBeDefined();
+		expect(changes["t333"]).toBeUndefined();
 	});
 
 	it("make 1 change each of the two AOIs", function() {
@@ -64,8 +64,8 @@ describe("mothernature", function() {
 		mothernature.recordChange(1,2,"color", "t333");
 		var changes = mothernature.getChanges("julie");
 
-		expect(changes["t12"]).toBe(true);
-		expect(changes["t333"]).toBe(true);
+		expect(changes["t12"]).toBeDefined();
+		expect(changes["t333"]).toBeDefined();
 	});
 
 	it("make 1 change after previous change retrieval", function() {
@@ -74,21 +74,21 @@ describe("mothernature", function() {
 		mothernature.recordChange(1,2,"color", "t333");
 		var changes = mothernature.getChanges("julie");
 
-		expect(changes["t12"]).toBe(true);
-		expect(changes["t333"]).toBe(true);
+		expect(changes["t12"]).toBeDefined();
+		expect(changes["t333"]).toBeDefined();
 
 		changes = mothernature.getChanges("julie");
 
-		expect(changes["t12"]).toBe(undefined);
-		expect(changes["t333"]).toBe(undefined);
+		expect(changes["t12"]).toBeUndefined();
+		expect(changes["t333"]).toBeUndefined();
 
 		mothernature.recordChange(1,2,"color", "t333");
 		mothernature.recordChange(1,2,"color", "t333");
 
 		changes = mothernature.getChanges("julie");
 
-		expect(changes["t12"]).toBe(undefined);
-		expect(changes["t333"]).toBe(true);
+		expect(changes["t12"]).toBeUndefined();
+		expect(changes["t333"]).toBeDefined();
 
 	});
 });
