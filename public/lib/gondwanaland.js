@@ -12,17 +12,21 @@
 "use strict";
 
 // need to change this dynamicall!?
-var tileWidth = 10;
-var tileHeight = 10;
-
-var CELL_W = 12; // px
-var CELL_H = 10;
-
 var MAX_ZOOM = 10;
 var gondwanaland = (function() {
 	var canvas = $("#gondwanaland")[0];
 	var ctx = canvas.getContext("2d");
 
+	// Constants
+	var MATRIX_COLOR = "#22ff33";
+	var tileWidth = 10;
+	var tileHeight = 10;
+	var CELL_W = 12; // px
+	var CELL_H = 10;
+
+	// Variables
+
+	// Canvas size
 	var cHeight;
 	var cWidth;
 
@@ -61,6 +65,8 @@ var gondwanaland = (function() {
 		// how many cells fit on the page?
 		cellsX = Math.ceil(cWidth/cellWidth);
 		cellsY = Math.ceil(cHeight/cellHeight);
+
+		console.log("CELLS X " + cellsX + " CELLS Y " + cellsY);
 	}
 
 	// x,y cell coords that should be in the middle of our screen
@@ -108,23 +114,42 @@ var gondwanaland = (function() {
 
 	}	
 
+	function dumpWorldAttributes() {
+		console.log(" === world === ");
+		console.log("Canvas width: " + cWidth);
+		console.log("Canvas height: " + cHeight);
+		console.log("Cell Width, Height: " + cellWidth + ","+ cellHeight);
+		console.log("Tile Width, Height: " + tileWidth + ","+ tileHeight);
+		console.log("Cells on view: " + cellsX + ","+ cellsY);
+		console.log(" === world === ");
+	}
+
 	// Draw a single tile in the right place on the viewport
 	function drawTile(id) {
+		dumpWorldAttributes();
+
 		var gxy = getXYFromId(id);
 
 		var viewX = gxy.x - vx + Math.floor(cellsX/2);
-		var viewY = gxy.y - vx + Math.floor(cellsY/2);
+		var viewY = gxy.y - vy + Math.floor(cellsY/2);
 
 		// fill the tile background with black
-		//ctx.clearRect(viewX*cellWidth, cHeight - (viewY+1)*cellHeight,tileWidth*cellWidth, tileHeight*cellHeight);
+		ctx.clearRect(viewX*cellWidth, cHeight - (viewY+tileHeight)*cellHeight,tileWidth*cellWidth, tileHeight*cellHeight);
+		ctx.strokeStyle = "#ff3311"; 
+		ctx.lineWidth=4;
+		ctx.strokeRect(viewX*cellWidth, cHeight - (viewY+tileHeight)*cellHeight,tileWidth*cellWidth, tileHeight*cellHeight);		
 console.log("drawing tile "+id+" at view coords " + viewX + "," + viewY);
+		ctx.lineWidth=1;
 
 		// draw each of the 10x10 tile cells
+		var aa = 0;
 		for (var a = viewX; a < viewX+tileWidth; a++) {
 			for (var b = viewY; b < viewY+tileHeight; b++) {
 				drawCell(a,b,gxy.x+a-viewX, gxy.y+b-viewY);
+				aa++;
 			}
 		} 
+		console.log("A " + aa);
 	}
 
 	// convert "xNNNynnnnn" to NNN,nnnnn
@@ -148,7 +173,7 @@ console.log("drawing tile "+id+" at view coords " + viewX + "," + viewY);
 		aoi[tileId] = true; 
 
 		if (!tile) { 
-			outlineCell(a,b, "#22ff33");
+			outlineCell(a,b, MATRIX_COLOR);
 			server.requestTileFromServer(tileId, draw);
 		} else {
 			fillCell(a,b, tile.cells[cxy.x][cxy.y].color);
