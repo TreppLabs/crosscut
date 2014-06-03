@@ -36,10 +36,10 @@ function login() {
 function bang() {
   gondwanaland.init();
   $("#gondwanaland").show();
-  
-  // NOTE: This has been taken out until we get the regular drawing and 
-  //        updating routines working smoothly so as not to muddy the waters.
-  // setInterval(getCellUpdates, POLLING_INTERVAL);
+  $("#gondwanaland").focus(); // for keypresses to work
+
+  // listen to the server for cell chnages, periodically
+  setInterval(getCellUpdates, POLLING_INTERVAL);
 }
 
 // Move to socket.io soon

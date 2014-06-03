@@ -93,6 +93,7 @@ app.get("/tile/:id", function (req, res) {
 
 app.post('/aoi', function (req,res) {
   if (!req.session.user.username) { res.send(401); return }
+  console.log("REGISTER AOI: " + req.session.user.username + " tile: " + req.body);
   mothernature.registerAOI(req.session.user.username, req.body);
   res.send(200);
 });
@@ -105,6 +106,7 @@ app.get('/changes', function(req, res) {
   }
   
   var username = req.session.user.username
+  console.log("CHANGES for " + username + "?");
   res.send(mothernature.getChanges(req.session.user.username));
 });
 
@@ -112,6 +114,8 @@ app.post('/clicker', function(req, res) {
   var cellX = parseInt(req.body.cellX);
   var cellY = parseInt(req.body.cellY);
   var color = req.session.user.color;
+
+  console.log("CLICK: " + req.session.user.username + " color: " + color);
 
   var tile = worldmap.move(cellX, cellY, color);
   res.send(tile);

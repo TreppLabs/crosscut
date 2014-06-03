@@ -66,7 +66,6 @@ var gondwanaland = (function() {
 		cellsX = Math.ceil(cWidth/cellWidth);
 		cellsY = Math.ceil(cHeight/cellHeight);
 
-		console.log("CELLS X " + cellsX + " CELLS Y " + cellsY);
 	}
 
 	// x,y cell coords that should be in the middle of our screen
@@ -126,7 +125,7 @@ var gondwanaland = (function() {
 
 	// Draw a single tile in the right place on the viewport
 	function drawTile(id) {
-		dumpWorldAttributes();
+		//dumpWorldAttributes();
 
 		var gxy = getXYFromId(id);
 
@@ -135,21 +134,18 @@ var gondwanaland = (function() {
 
 		// fill the tile background with black
 		ctx.clearRect(viewX*cellWidth, cHeight - (viewY+tileHeight)*cellHeight,tileWidth*cellWidth, tileHeight*cellHeight);
+
+		// draw a red line around the tile for debugging
 		ctx.strokeStyle = "#ff3311"; 
 		ctx.lineWidth=4;
 		ctx.strokeRect(viewX*cellWidth, cHeight - (viewY+tileHeight)*cellHeight,tileWidth*cellWidth, tileHeight*cellHeight);		
-console.log("drawing tile "+id+" at view coords " + viewX + "," + viewY);
-		ctx.lineWidth=1;
 
 		// draw each of the 10x10 tile cells
-		var aa = 0;
 		for (var a = viewX; a < viewX+tileWidth; a++) {
 			for (var b = viewY; b < viewY+tileHeight; b++) {
 				drawCell(a,b,gxy.x+a-viewX, gxy.y+b-viewY);
-				aa++;
 			}
 		} 
-		console.log("A " + aa);
 	}
 
 	// convert "xNNNynnnnn" to NNN,nnnnn
@@ -187,7 +183,7 @@ console.log("drawing tile "+id+" at view coords " + viewX + "," + viewY);
 		var clickedX = Math.floor(xy.x / cellWidth);
 		var clickedY = Math.floor((cHeight - xy.y)/ cellHeight); // flip the Y 
 
-		console.log("X Y cell click ["+(xy.y/ cellHeight)+"] (" + xy.x+","+xy.y+ ") " + clickedX + "," + clickedY);
+		//console.log("X Y cell click ["+(xy.y/ cellHeight)+"] (" + xy.x+","+xy.y+ ") " + clickedX + "," + clickedY);
 
 		// Locally change the color
 		fillCell(clickedX, clickedY, userColorChoice);
@@ -206,6 +202,7 @@ console.log("drawing tile "+id+" at view coords " + viewX + "," + viewY);
 	}
 
 	function outlineCell(x,y,color) {
+		ctx.lineWidth=1;
 		ctx.strokeStyle = "#22ff33"; // the matrix style colors for cool effect. Or not.
 		ctx.strokeRect(x * cellWidth, cHeight-(y+1)*cellHeight, cellWidth, cellHeight);		
 	}
@@ -228,43 +225,7 @@ console.log("drawing tile "+id+" at view coords " + viewX + "," + viewY);
 
 	// TODO: abstract this to an array of config.
 	var shiftOn = false;
-	window.addEventListener("keydown", function(e){
-		var jump = 1;
-		if (shiftOn) jump += 5;
-
-		switch(e.keyCode)
-		{
-			case 37: // left arrow
-				move(vx + jump, vy);
-				break;
-			case 38: // up arrow
-				move(vx, vy-jump);
-				break;
-			case 39: // right arrow
-				move(vx - jump, vy);
-				break;
-			case 40: // down arrow
-				move(vx, vy+jump);
-				break;
-			case 90: // z - zoom
-				var dir = shiftOn?-1:1;
-				setZoom(zoom+dir);
-				draw();
-				break;
-			case 16: // shift
-				shiftOn = true;
-				break;
-		}
-	}, false);
-
-	window.addEventListener("keyup", function(e){
-		switch(e.keyCode)
-		{
-			case 16: // key P pauses the game
-				shiftOn = false;
-				break;		
-		}
-	}, false);
+	
 
 	function resize() {
 		cHeight = canvas.height = $("#mapContainer").height();
@@ -281,6 +242,51 @@ console.log("drawing tile "+id+" at view coords " + viewX + "," + viewY);
 		resize();
 
 		canvas.addEventListener("mousedown", userMove, false);
+		addKeypressListeners();
+	}
+
+	function unInit() {
+		removeKeypressListeners();	
+	}
+
+	function addKeypressListeners() {
+		window.addEventListener("keydown", function(e){
+			var jump = 1;
+			if (shiftOn) jump += 5;
+
+			switch(e.keyCode)
+			{
+				case 37: // left arrow
+					move(vx + jump, vy);
+					break;
+				case 38: // up arrow
+					move(vx, vy-jump);
+					break;
+				case 39: // right arrow
+					move(vx - jump, vy);
+					break;
+				case 40: // down arrow
+					move(vx, vy+jump);
+					break;
+				case 90: // z - zoom
+					var dir = shiftOn?-1:1;
+					setZoom(zoom+dir);
+					draw();
+					break;
+				case 16: // shift
+					shiftOn = true;
+					break;
+			}
+		}, false);
+
+		window.addEventListener("keyup", function(e){
+			switch(e.keyCode)
+			{
+				case 16: // key P pauses the game
+					shiftOn = false;
+					break;		
+			}
+		}, false);
 	}
 
 	$(window).resize(function() {

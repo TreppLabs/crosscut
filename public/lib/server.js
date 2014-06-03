@@ -38,11 +38,13 @@ var server = (function() {
 		$.post("/aoi", aoi);
 	}
 
-	function getChanges(callback) {
-		$.get("/changes", function (tiles) {
-			Object.keys(tiles).forEach(function(t) {
-				console.log("Got a tile from our AOI: " + t.id);
-				tiles[i.id] = t;
+	function getChanges(drawer) {
+		$.get("/changes", function (changedTiles) {
+			Object.keys(changedTiles).forEach(function(t) {
+				var id = changedTiles[t].id;
+				console.log("Got a changed tile from our AOI: " + id);
+				tiles[id] = changedTiles[t];
+				drawer(id);
 			});
 		});
 	}
