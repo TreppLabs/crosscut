@@ -10,10 +10,12 @@ var tiles = {};
 // set map size per window
 $(document).ready(function(){
 	initHandlers();
+   $('#password').focus();
 });
 
 function initHandlers() {
 	$("#login").click(login);
+  $('#password').keypress(function(e) { if(e.which == 13) { $('#login').trigger('click') }});
 }
 
 function login() {

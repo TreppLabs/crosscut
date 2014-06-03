@@ -52,7 +52,7 @@ var gondwanaland = (function() {
 	var cellHeight;
 
 	function setZoom(level) {
-		if (level <= 0) level = 0.5;
+		if (level <= 0) level = 0.3;
 		if (level >= 1) level = Math.floor(level);
 		if (level >= MAX_ZOOM) level = MAX_ZOOM;
 
