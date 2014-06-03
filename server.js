@@ -58,6 +58,7 @@ config.startingCellStrength = 100;
 config.diagonalsConnected = true;
 
 worldmap.setConfig(config);
+decay.setConfig(config);
 bigbang.loadWorld();
 mothernature.grow();
 decay.startRotter();
