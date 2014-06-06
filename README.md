@@ -17,3 +17,13 @@ First install jasmine-node
 Then run the tests with 
 
 	jasmin-node spec
+
+A short cut is 
+	
+	npm test
+
+## Running
+
+To run the server type
+
+	npm start
