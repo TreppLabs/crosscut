@@ -21,8 +21,8 @@ var gondwanaland = (function() {
 	var MATRIX_COLOR = "#22ff33";
 	var tileWidth = 10;
 	var tileHeight = 10;
-	var CELL_W = 12; // px
-	var CELL_H = 10;
+	var CELL_W = 10; // px
+	var CELL_H = 12;
 
 	// Variables
 
@@ -85,14 +85,16 @@ var gondwanaland = (function() {
 	// Maybe only draw the whole then when we move. Otherwise its spot changes only
 	// Unless this is cheap enough.
 	function draw(tileId) {
-		// reset the area of interests
-		aoi = {};
-
 		// only update one tile if provided
 		if (tileId) {
 			drawTile(tileId);
 			return;
 		}
+
+		// reset the area of interests
+		var oldAoi = aoi;
+		aoi = {};
+
 
 		// redraw the whole screen.
 		ctx.clearRect(0,0,cWidth, cHeight);
@@ -111,7 +113,18 @@ var gondwanaland = (function() {
 		// register all our new area of interest based on what was drawn
 		server.registerAOI(aoi);
 
+		requestKnownTilesNewlyExposed(oldAoi, aoi);
 	}	
+
+	function requestKnownTilesNewlyExposed(oldAoi, newAoi) {
+		debugger;
+		for (var t in newAoi) {
+			if (!oldAoi[t] && tiles[t]) { // in the new aoi, not in the old, and we have an old version of it
+console.log("Seeing an old tile: " + t + " so requesting it from the server again");								
+				server.requestTileFromServer(t, draw);
+			}
+		}
+	}
 
 	function dumpWorldAttributes() {
 		console.log(" === world === ");
