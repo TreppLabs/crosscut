@@ -1,6 +1,7 @@
 // accretion.js
 
-// the following should agree with values in server.js
+// global variable
+var user;
 var emptyCellColor = '#B99F67'
 var userColorChoice;
 var POLLING_INTERVAL = 10000;
@@ -19,16 +20,18 @@ function initHandlers() {
 }
 
 function login() {
-  // select user color
   var username = $("#username").val();
   var password = $("#password").val();
 
-  // login and get the users color
-  // TODO: get more info from server (e.g., empty color and more user details)
-  $.post("/login", {username: username, password: password}, function (user) {
-    userColorChoice = user.color;
-    loggedIn = true;
-    bang();
+  server.authenticate(username, password, function (theUser) {
+    user = theUser;
+    if (user != false) {
+      $(".loginstrip").hide();
+      //$(".scorestrip").show();
+      userColorChoice = user.color;
+      loggedIn = true;
+      bang();
+    }
   });
 }
 

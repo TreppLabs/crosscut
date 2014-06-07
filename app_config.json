@@ -4,20 +4,9 @@
 	"CROSSCUT_MAPTILE_TABLE": 	"crosscut-maptile",
 	"NEW_SIGNUP_TOPIC": 		"arn:aws:sns:us-west-2:244265663318:my-sns-topic",
 
-	"users": {
-		"jim":
-		{
-			"username": "jim",
-			"realname": "Jim R.",
-			"password": "ben",
-			"color": "#ff22dd"
-		},
-		"simon":
-		{
-			"username": "simon",
-			"realname": "Simon R-A.",
-			"password": "zak",
-			"color": "#55aa11"
-		}
-	}
+	"tileWidth": 				10,
+	"tileHeight": 				10, 
+	"emptyCellColor": 			"#B99F67",
+	"startingCellStrength":		100,
+	"diagonalsConnected":		true
 }
