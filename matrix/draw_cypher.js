@@ -2,12 +2,15 @@
 
 var art = require('./ascii_art');
 
-var token = "rrr2342323k4l2j3LKJLKJDFD";
+var destination = {
+	token: "rrr2342323k4l2j3LKJLKJDFD",
+	server: "http://localhost:3000"
+}
 
 function stamp() {
-	art.stampArt("./cypher/robot.txt", token, [[10,10], [60, 100], [-20, -50]]);
-	art.stampArt("./cypher/star_wars_logo.txt", token, [[-50,100]]);
-	art.stampArt("./cypher/storm_trooper.txt", token, [[-50,-200]]);
+	art.stampArt("./cypher/robot.txt", destination, [0,300]);
+	art.stampArt("./cypher/star_wars_logo.txt", destination, [[-90,100], [-90, 30], [-90, -40]]);
+	art.stampArt("./cypher/storm_trooper.txt", destination, [[-50,-200]]);
 }
 
 stamp();

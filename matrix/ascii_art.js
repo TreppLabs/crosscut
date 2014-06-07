@@ -5,28 +5,33 @@
 var rest			= require('restler');
 var fs 				= require('fs');
 var readline 		= require("readline");
-var accretionSDK	= require('./accretin_sdk');
+var accretionSDK	= require('./accretion_sdk');
 
 module.exports = {
 	stampArt: stampArt
 }
 
 // locations = [[x,y], [x1,y1], ...]
-function stampArt(filename, token, locations) {
+function stampArt(filename, destination, locations) {
+	// initialize the SDK with the server and credentials
+	accretionSDK.init(destination.server, destination.token);
+
 	loadArt(filename, function(art) {
 		for (var l in locations) {
-			draw(art, token, locations[l]);
+			draw(art, locations[l]);
 		}
 	});
 }
 
-function draw(art, token, xy) {
-	console.log("Drawing art at " + xy[0] + "," + xy[1])
+function draw(art, xy) {
+
+	console.log("Drawing art at " + xy[0] + "," + xy[1]);
+	
 	for (var l = 0; l < art.lines.length; l++) {
 		for (var c = 0; c < art.lines[l].length; c++) {
 			var char = art.lines[l][c];
 			if (char != " ") {
-				accretionSDK.click(xy[0]+c, xy[1]-l, token); // - because 0,0 is bottom left
+				accretionSDK.click(xy[0]+c, xy[1]-l); // - because 0,0 is bottom left
 			}
 		}
 	}

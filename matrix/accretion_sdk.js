@@ -18,6 +18,8 @@ function init(server, theToken) {
 
 // Call the server for a click
 function click(x,y) {
+	if (!token || !serverUrl) { throw "Accretion - SDK must call init first" }
+
 	console.log("x,y,t: " + x + "," + y + ", " + token);
 	rest.post('http://localhost:3000/clicker?token=' + token, { data: 
 			{"cellX" : x, "cellY" : y}
