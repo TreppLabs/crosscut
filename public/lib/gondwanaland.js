@@ -12,7 +12,9 @@
 "use strict";
 
 // need to change this dynamicall!?
-var MAX_ZOOM = 10;
+var MAX_ZOOM = 7; // 1-7
+var INITIAL_ZOOM = 5;
+
 var gondwanaland = (function() {
 	var canvas = $("#gondwanaland")[0];
 	var ctx = canvas.getContext("2d");
@@ -21,7 +23,7 @@ var gondwanaland = (function() {
 	var MATRIX_COLOR = "#22ff33";
 	var tileWidth = 10;
 	var tileHeight = 10;
-	var CELL_W = 10; // px
+	var CELL_W = 12; // px
 	var CELL_H = 12;
 
 	// Variables
@@ -40,6 +42,7 @@ var gondwanaland = (function() {
 
 	// how much in or out are we looking (discrete levels only)
 	var zoom ; // 1-5 - bigger the zoom level the less you see
+	var zoomLevel; // internal use
 
 	var me = {};
 
@@ -52,20 +55,24 @@ var gondwanaland = (function() {
 	var cellHeight;
 
 	function setZoom(level) {
-		if (level <= 0) level = 0.3;
-		if (level >= 1) level = Math.floor(level);
-		if (level >= MAX_ZOOM) level = MAX_ZOOM;
-
+		// bound the zoom limits
 		zoom = level;
+		if (level >= MAX_ZOOM) { zoom = MAX_ZOOM; }
+		if (level < 1) { zoom = 1; }
+		
+		// convert the zoom to the internal zoom level magnifier
+		if (zoom >= 6) { zoomLevel = zoom - 5; }
+		else {
+			zoomLevel = zoom/MAX_ZOOM;
+		}
 
 		// how big to draw a cell?
-		cellWidth = Math.ceil(CELL_W * zoom);
-		cellHeight = Math.ceil(CELL_H * zoom);
+		cellWidth = Math.ceil(CELL_W * zoomLevel);
+		cellHeight = Math.ceil(CELL_H * zoomLevel);
 
 		// how many cells fit on the page?
 		cellsX = Math.ceil(cWidth/cellWidth);
 		cellsY = Math.ceil(cHeight/cellHeight);
-
 	}
 
 	// x,y cell coords that should be in the middle of our screen
@@ -95,7 +102,6 @@ var gondwanaland = (function() {
 		var oldAoi = aoi;
 		aoi = {};
 
-
 		// redraw the whole screen.
 		ctx.clearRect(0,0,cWidth, cHeight);
 
@@ -117,10 +123,8 @@ var gondwanaland = (function() {
 	}	
 
 	function requestKnownTilesNewlyExposed(oldAoi, newAoi) {
-		debugger;
 		for (var t in newAoi) {
 			if (!oldAoi[t] && tiles[t]) { // in the new aoi, not in the old, and we have an old version of it
-console.log("Seeing an old tile: " + t + " so requesting it from the server again");								
 				server.requestTileFromServer(t, draw);
 			}
 		}
@@ -148,10 +152,12 @@ console.log("Seeing an old tile: " + t + " so requesting it from the server agai
 		// fill the tile background with black
 		ctx.clearRect(viewX*cellWidth, cHeight - (viewY+tileHeight)*cellHeight,tileWidth*cellWidth, tileHeight*cellHeight);
 
-		// draw a red line around the tile for debugging
+		// draw a red line around newly arrived tiles for debugging
+		/*
 		ctx.strokeStyle = "#ff3311"; 
 		ctx.lineWidth=4;
 		ctx.strokeRect(viewX*cellWidth, cHeight - (viewY+tileHeight)*cellHeight,tileWidth*cellWidth, tileHeight*cellHeight);		
+		*/
 
 		// draw each of the 10x10 tile cells
 		for (var a = viewX; a < viewX+tileWidth; a++) {
@@ -182,7 +188,7 @@ console.log("Seeing an old tile: " + t + " so requesting it from the server agai
 		aoi[tileId] = true; 
 
 		if (!tile) { 
-			outlineCell(a,b, MATRIX_COLOR);
+			if (zoom > 2) outlineCell(a,b, MATRIX_COLOR);
 			server.requestTileFromServer(tileId, draw);
 		} else {
 			fillCell(a,b, tile.cells[cxy.x][cxy.y].color);
@@ -209,9 +215,12 @@ console.log("Seeing an old tile: " + t + " so requesting it from the server agai
 	// hence we need to convert to canvas coord which are top left = 0,0
 	function fillCell(x, y, color) {
 		var border = 1; // px around each cell
-		//ctx.clearRect(x * cellWidth, cHeight-(y+1)*cellHeight, cellWidth, cellHeight);
+
+		// no border when its really small
+		if (zoom <= 4) border = 0;
+
 		ctx.fillStyle = color;
-		ctx.fillRect(x * cellWidth+border, cHeight-(y+1)*cellHeight+border, cellWidth-1, cellHeight-1);
+		ctx.fillRect(x * cellWidth+border, cHeight-(y+1)*cellHeight+border, cellWidth-border, cellHeight-border);
 	}
 
 	function outlineCell(x,y,color) {
@@ -251,7 +260,7 @@ console.log("Seeing an old tile: " + t + " so requesting it from the server agai
 	} 
 
 	function init() {
-		setZoom(2);
+		setZoom(INITIAL_ZOOM);
 		resize();
 
 		canvas.addEventListener("mousedown", userMove, false);
