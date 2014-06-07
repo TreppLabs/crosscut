@@ -5,6 +5,7 @@
 var rest			= require('restler');
 var fs 				= require('fs');
 var readline 		= require("readline");
+var accretionSDK	= require('./accretin_sdk');
 
 module.exports = {
 	stampArt: stampArt
@@ -25,24 +26,10 @@ function draw(art, token, xy) {
 		for (var c = 0; c < art.lines[l].length; c++) {
 			var char = art.lines[l][c];
 			if (char != " ") {
-				click(xy[0]+c, xy[1]-l, token);
+				accretionSDK.click(xy[0]+c, xy[1]-l, token); // - because 0,0 is bottom left
 			}
 		}
 	}
-}
-
-// Call the server
-function click(x,y,token) {
-	console.log("x,y,t: " + x + "," + y + ", " + token);
-	rest.post('http://localhost:3000/clicker?token=' + token, {data: 
-		{"cellX" : x, "cellY" : y}
-	}).on('complete', function(result) {
-		if (result instanceof Error) {
-			console.log('Error:', result.message);
-		} else {
-			console.log(result);
-		}
-	});	
 }
 
 function loadArt(fileName, callback) {
