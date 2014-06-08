@@ -30,11 +30,6 @@ app.use(express.bodyParser());
 app.use(express.methodOverride());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// For sessions used by the real time api
-// sessions no longer needed
-//app.use(express.cookieParser());
-//app.use(express.session({secret: 'meconium'}));
-
 //Read config values from a JSON file.
 var config = fs.readFileSync('./app_config.json', 'utf8');
 config = JSON.parse(config);
