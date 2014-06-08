@@ -23,7 +23,7 @@ var gondwanaland = (function() {
 	var MATRIX_COLOR = "#22ff33";
 	var tileWidth = 10;
 	var tileHeight = 10;
-	var CELL_W = 12; // px
+	var CELL_W = 8; // px
 	var CELL_H = 12;
 
 	// Variables
