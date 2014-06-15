@@ -24,7 +24,7 @@ var gondwanaland = (function() {
 	var EMPTY_COLOR = "#B99F67"; // should read from config
 	var tileWidth = 10;
 	var tileHeight = 10;
-	var CELL_W = 12; // px
+	var CELL_W = 8; // px
 	var CELL_H = 12;
 
 	// Variables

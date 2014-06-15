@@ -27,3 +27,12 @@ A short cut is
 To run the server type
 
 	npm start
+
+## Dependancies
+
+Some of the libraries used that are not in node_modules:
+
+Code coverage: 					https://github.com/gotwarlost/istanbul
+Software complexity report: 	https://github.com/philbooth/complexity-report
+Automatic testing: 				https://github.com/mhevery/jasmine-node
+

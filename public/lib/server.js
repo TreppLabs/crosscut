@@ -44,15 +44,8 @@ var server = (function() {
 		$.post("/aoi" + tokenParam(), aoi);
 	}
 
-	function getChanges(drawer) {
-		$.get("/changes" + tokenParam(), function (changedTiles) {
-			Object.keys(changedTiles).forEach(function(t) {
-				var id = changedTiles[t].id;
-				console.log("Got a changed tile from our AOI: " + id);
-				tiles[id] = changedTiles[t];
-				drawer(id);
-			});
-		});
+	function getChanges(processChanges) {
+		$.get("/changes" + tokenParam(), processChanges);
 	}
 
 	function authenticate(username, password, callback) {		
