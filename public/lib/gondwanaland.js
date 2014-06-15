@@ -21,6 +21,7 @@ var gondwanaland = (function() {
 
 	// Constants
 	var MATRIX_COLOR = "#22ff33";
+	var EMPTY_COLOR = "#B99F67"; // should read from config
 	var tileWidth = 10;
 	var tileHeight = 10;
 	var CELL_W = 12; // px
@@ -191,7 +192,11 @@ var gondwanaland = (function() {
 			if (zoom > 2) outlineCell(a,b, MATRIX_COLOR);
 			server.requestTileFromServer(tileId, draw);
 		} else {
-			fillCell(a,b, tile.cells[cxy.x][cxy.y].color);
+			var cellColor = tile.cells[cxy.x][cxy.y].color;
+			if (cellColor == EMPTY_COLOR) {
+				cellColor = randomScapeColor(x,y);
+			}
+			fillCell(a,b, cellColor);
 		}					
 	}
 
@@ -321,3 +326,84 @@ var gondwanaland = (function() {
 
 	return me;
 })();
+
+// low-budget 'random' generator
+// found this on Stack Overflow
+var seed = 1;
+function cheesyRandom() {
+    var x = Math.sin(seed++) * 1000000;
+    return x - Math.floor(x);
+}
+
+function r(i, j) {
+	// random int between i, j
+	return i + Math.floor(cheesyRandom()*((j-i)+1));
+}
+
+// generate a random sort-of-landscape
+//
+// model is random hilly rectangles, combined
+// can compute (x,y) height just from x,y
+// [lots of recomputation at other x,y; could speed this up]
+//
+// height at (global) (x,y) is a combination of hills (& dents) each centered in 10x10 boxes
+// we need to look at height contributions from neighboring 10x10 boxes which may overlap x,y
+// so generate 5 hills in each of 9 boxes
+function randomScape(x, y) {
+	var height = 0;
+	var xmod = x % 10;
+	var ymod = y % 10;
+	if (xmod < 0) xmod += 10;
+	if (ymod < 0) ymod += 10;
+	var llx = x-xmod;
+	var lly = y-ymod;
+	for (var xx=llx-10; xx<=llx+10; xx+=10) {
+		for (var yy=lly-10; yy<=lly+10; yy+=10) {
+			seed = (xx * 100000) + yy;
+			//console.log('for x,y: ' + x + ',' + y + ', doing box at ' + xx + ',' + yy);				
+			//console.log('seed: ' + seed);
+			// 5 random rectangles in each 10x10, each centered at a random spot
+			for (var i=0; i<5; i++) {
+				var rectHeight = r(1,8);
+				var rectWidth = r(1,8);
+				var rectCenterX = xx + r(0,9);
+				var rectCenterY = yy + r(0,9);
+				var lowX = rectCenterX - Math.floor(rectWidth/2);
+				var highX = lowX + rectWidth;
+				var lowY = rectCenterY - Math.floor(rectHeight/2);
+				var highY = lowY + rectHeight;
+				//console.log('rect' + i + ' @ ' + lowX + ',' + lowY + ', w: ' + rectWidth + ', h: ' + rectHeight);
+				// height contribution of rectangle is 10, except less around borders
+				var heightIncrement = 0;
+				if ((x>=lowX && x<=highX) && (y>=lowY && y<=highY)) {
+					heightIncrement += 10;
+					if (x==lowX || x==highX) {
+						heightIncrement -= 4;
+					} else if (x==lowX+1 || x==highX-1) {
+						heightIncrement -= 2;
+					}
+					if (y==lowY || y==highY) {
+						heightIncrement -= 4;
+					} else if (y==lowY+1 || y==highY-1) {
+						heightIncrement -= 2;
+					}
+				}
+				height += heightIncrement;
+			}
+		}
+	}
+	return height;
+}
+
+function randomScapeColor(x,y) {
+	var EMPTY_COLOR = "#B99F67"; // should read from config
+	var r = 0xb9;
+	var g = 0x9f;
+	var b = 0x67;
+
+	var height = randomScape(x,y);
+	var rgb = b | (g+height << 8) | (r << 16);
+	return '#' + (0x1000000 | rgb).toString(16).substring(1)
+}
+
+

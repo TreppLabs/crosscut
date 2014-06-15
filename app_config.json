@@ -8,5 +8,6 @@
 	"tileHeight": 				10, 
 	"emptyCellColor": 			"#B99F67",
 	"startingCellStrength":		100,
-	"diagonalsConnected":		true
+	"diagonalsConnected":		true,
+	"decayInterval":			600000
 }
