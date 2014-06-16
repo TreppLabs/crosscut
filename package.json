@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "start": 	"node server.js",
-    "test": 	"jasmine-node test"
+	"test":	"istanbul cover jasmine-node -- test"
   },
   "dependencies": {
     "express": "3.4.0",
