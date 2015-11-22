@@ -24,7 +24,7 @@ var gondwanaland = (function() {
 	var EMPTY_COLOR = "#B99F67"; // should read from config
 	var tileWidth = 10;
 	var tileHeight = 10;
-	var CELL_W = 8; // px
+	var CELL_W = 12; // px
 	var CELL_H = 12;
 
 	// Variables
@@ -341,6 +341,8 @@ function r(i, j) {
 }
 
 // generate a random sort-of-landscape
+// 
+// elevation between 0..100
 //
 // model is random hilly rectangles, combined
 // can compute (x,y) height just from x,y
@@ -348,8 +350,9 @@ function r(i, j) {
 //
 // height at (global) (x,y) is a combination of hills (& dents) each centered in 10x10 boxes
 // we need to look at height contributions from neighboring 10x10 boxes which may overlap x,y
-// so generate 5 hills in each of 9 boxes
-function randomScape(x, y) {
+// so generate several hills in each of 9 boxes
+// hills are rectangles, overlapping hills "add"
+function randomScape(miniSeed, x, y) {
 	var height = 0;
 	var xmod = x % 10;
 	var ymod = y % 10;
@@ -359,15 +362,23 @@ function randomScape(x, y) {
 	var lly = y-ymod;
 	for (var xx=llx-10; xx<=llx+10; xx+=10) {
 		for (var yy=lly-10; yy<=lly+10; yy+=10) {
-			seed = (xx * 100000) + yy;
+			seed = miniSeed + (xx * 100000) + yy;
 			//console.log('for x,y: ' + x + ',' + y + ', doing box at ' + xx + ',' + yy);				
 			//console.log('seed: ' + seed);
-			// 5 random rectangles in each 10x10, each centered at a random spot
-			for (var i=0; i<5; i++) {
-				var rectHeight = r(1,8);
-				var rectWidth = r(1,8);
-				var rectCenterX = xx + r(0,9);
-				var rectCenterY = yy + r(0,9);
+			// random rectangles in each 10x10, each centered at a random spot
+			for (var i=0; i<8; i++) {
+				// half vertically oriented, half horizontal:
+				var rectHeight;
+				var rectWidth;
+				if (i%2 == 0) {
+					rectWidth = r(3,8) + r(3,8);
+					rectHeight =  r(1,5);
+				} else {
+					rectHeight = r(3,8) + r(3,8);
+					rectWidth =  r(1,5);
+				}
+				var	rectCenterX = xx + r(0,9);
+				var	rectCenterY = yy + r(0,9);
 				var lowX = rectCenterX - Math.floor(rectWidth/2);
 				var highX = lowX + rectWidth;
 				var lowY = rectCenterY - Math.floor(rectHeight/2);
@@ -376,33 +387,60 @@ function randomScape(x, y) {
 				// height contribution of rectangle is 10, except less around borders
 				var heightIncrement = 0;
 				if ((x>=lowX && x<=highX) && (y>=lowY && y<=highY)) {
-					heightIncrement += 10;
-					if (x==lowX || x==highX) {
-						heightIncrement -= 4;
-					} else if (x==lowX+1 || x==highX-1) {
-						heightIncrement -= 2;
-					}
-					if (y==lowY || y==highY) {
-						heightIncrement -= 4;
-					} else if (y==lowY+1 || y==highY-1) {
-						heightIncrement -= 2;
-					}
+					height += 14;
+					// Following code is a way to "smooth" the rectangles' edges
+					//heightIncrement += 10;
+					//if (x==lowX || x==highX) {
+					//	heightIncrement -= 4;
+					//} else if (x==lowX+1 || x==highX-1) {
+					//	heightIncrement -= 2;
+					//}
+					//if (y==lowY || y==highY) {
+					//	heightIncrement -= 4;
+					//} else if (y==lowY+1 || y==highY-1) {
+					//	heightIncrement -= 2;
+					//}
 				}
-				height += heightIncrement;
+				//height += heightIncrement;
 			}
 		}
 	}
+	if (height > 100) height = 100;
 	return height;
 }
 
 function randomScapeColor(x,y) {
-	var EMPTY_COLOR = "#B99F67"; // should read from config
-	var r = 0xb9;
-	var g = 0x9f;
-	var b = 0x67;
+	//var EMPTY_COLOR = "#A1D4C4"; // should read from config
+	//var r = 0xa1;
+	//var g = 0xd4;
+	//var b = 0xc4;
+	// Scale smoothly from a semi-bright green at "sea level" to a darkish grey at peaks
+	var EMPTY_COLOR = "#50E080"; // should read from config
+	var PEAK_COLOR = "#707060";
 
-	var height = randomScape(x,y);
-	var rgb = b | (g+height << 8) | (r << 16);
+	// decimal components of colors, above
+	var r = 80;
+	var g = 224;
+	var b = 128;
+	var rPeak = 112;
+	var gPeak = 112;
+	var bPeak = 96;
+
+	var ht = randomScape(0, x, y);
+
+	r = r + (ht / 100) * (rPeak-r);
+	g = g + (ht / 100) * (gPeak-g);
+	b = b + (ht / 100) * (bPeak-b);
+
+	// trim just in case
+	if (r > 255) r = 255;
+	if (r < 0)   r = 0;
+	if (g > 255) g = 255;
+	if (g < 0)   g = 0;
+	if (b > 255) b = 255;
+	if (b < 0)   b = 0;
+
+	var rgb = b | (g << 8) | (r << 16);
 	return '#' + (0x1000000 | rgb).toString(16).substring(1)
 }
 
